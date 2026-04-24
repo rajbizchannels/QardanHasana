@@ -5,7 +5,6 @@ import Toggle from '../components/common/Toggle';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
-const MODULE_ICONS = { users: '👥', profiles: '🪪', loans: '📋', transactions: '💳', ledger: '📒', documents: '📎', reports: '📊', approvals: '✅', settings: '⚙️', rbac: '🛡️', backup: '☁️' };
 
 export default function RBACPage() {
   const [roles, setRoles] = useState([]);
@@ -103,7 +102,7 @@ export default function RBACPage() {
         return (
           <div key={module} className="border border-dark-100 rounded-lg overflow-hidden">
             <div className="flex items-center justify-between px-3 py-2 bg-dark-50 cursor-pointer" onClick={() => toggleModule(module)}>
-              <span className="text-sm font-medium capitalize">{MODULE_ICONS[module]} {module}</span>
+              <span className="text-sm font-medium capitalize">{module}</span>
               <Toggle checked={allSelected} onChange={() => toggleModule(module)} />
             </div>
             <div className="p-3 grid grid-cols-2 gap-2">

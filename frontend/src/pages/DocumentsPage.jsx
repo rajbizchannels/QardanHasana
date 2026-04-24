@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { useDropzone } from 'react-dropzone';
+import { FileText, Image, Paperclip, Upload, Download, AlertTriangle } from 'lucide-react';
 import api from '../utils/api';
 import { hasRole, formatDateTime } from '../utils/helpers';
 import StatusBadge from '../components/common/StatusBadge';
@@ -87,9 +88,9 @@ export default function DocumentsPage() {
   };
 
   const fileIcon = (mime) => {
-    if (mime?.includes('pdf')) return '📄';
-    if (mime?.includes('image')) return '🖼️';
-    return '📎';
+    if (mime?.includes('pdf')) return <FileText className="w-5 h-5 text-red-500" />;
+    if (mime?.includes('image')) return <Image className="w-5 h-5 text-blue-500" />;
+    return <Paperclip className="w-5 h-5 text-dark-400" />;
   };
 
   return (
@@ -128,7 +129,7 @@ export default function DocumentsPage() {
                     <tr key={d.id}>
                       <td>
                         <div className="flex items-center gap-2">
-                          <span className="text-xl">{fileIcon(d.mime_type)}</span>
+                          <span>{fileIcon(d.mime_type)}</span>
                           <div>
                             <p className="text-sm font-medium truncate max-w-32">{d.original_name}</p>
                             <p className="text-xs text-dark-400">{d.file_size ? `${(d.file_size / 1024).toFixed(1)} KB` : ''}</p>
@@ -141,7 +142,7 @@ export default function DocumentsPage() {
                       <td className="text-xs">{formatDateTime(d.created_at)}</td>
                       <td><StatusBadge status={d.status} /></td>
                       <td>
-                        <button onClick={() => handleDownload(d.id, d.original_name)} className="text-primary-800 hover:underline text-sm">⬇ Download</button>
+                        <button onClick={() => handleDownload(d.id, d.original_name)} className="text-primary-800 hover:underline text-sm flex items-center gap-1"><Download className="w-3.5 h-3.5" /> Download</button>
                       </td>
                     </tr>
                   ))}
@@ -188,14 +189,14 @@ export default function DocumentsPage() {
               <input {...getInputProps()} />
               {file ? (
                 <div>
-                  <p className="text-2xl mb-2">{fileIcon(file.type)}</p>
+                  <div className="flex justify-center mb-2">{fileIcon(file.type)}</div>
                   <p className="font-medium text-dark-800">{file.name}</p>
                   <p className="text-xs text-dark-400">{(file.size / 1024).toFixed(1)} KB</p>
                   <button type="button" onClick={(e) => { e.stopPropagation(); setFile(null); }} className="text-red-500 text-xs mt-1 hover:underline">Remove</button>
                 </div>
               ) : (
                 <div>
-                  <p className="text-3xl mb-2">📎</p>
+                  <Upload className="w-8 h-8 text-dark-300 mx-auto mb-2" />
                   <p className="text-dark-600 font-medium">{isDragActive ? 'Drop file here' : 'Drag & drop or click to browse'}</p>
                   <p className="text-xs text-dark-400 mt-1">Accepts PDF, JPG, PNG up to 10MB</p>
                 </div>
@@ -203,8 +204,9 @@ export default function DocumentsPage() {
             </div>
           </div>
 
-          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3">
-            <p className="text-xs text-yellow-800">⚠️ Uploaded documents will be reviewed by the accountant before being posted to your ledger.</p>
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 flex gap-2">
+            <AlertTriangle className="w-4 h-4 text-yellow-600 mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-yellow-800">Uploaded documents will be reviewed by the accountant before being posted to your ledger.</p>
           </div>
         </form>
       </Modal>

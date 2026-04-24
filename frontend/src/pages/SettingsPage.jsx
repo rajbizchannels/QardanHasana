@@ -1,7 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import {
+  Building, DollarSign, Bell, Lock, Cloud, Save, Download, Shield, Info,
+} from 'lucide-react';
 import api from '../utils/api';
 import { hasRole } from '../utils/helpers';
+import { setCurrency } from '../store/slices/settingsSlice';
 import Toggle from '../components/common/Toggle';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
@@ -9,13 +13,13 @@ import toast from 'react-hot-toast';
 const CURRENCIES = ['INR', 'USD', 'GBP', 'EUR', 'AED', 'SAR', 'PKR'];
 
 export default function SettingsPage() {
+  const dispatch = useDispatch();
   const { user } = useSelector((s) => s.auth);
   const isAdmin = hasRole(user, 'admin');
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [tab, setTab] = useState('general');
-  const [backupStatus, setBackupStatus] = useState('');
   const [backuping, setBackuping] = useState(false);
 
   useEffect(() => { fetchSettings(); }, []);
@@ -36,6 +40,7 @@ export default function SettingsPage() {
     try {
       const entries = Object.entries(settings).map(([key, value]) => ({ key, value }));
       await api.put('/settings/bulk', { settings: entries });
+      if (settings.currency) dispatch(setCurrency(settings.currency));
       toast.success('Settings saved successfully');
     } catch { toast.error('Failed to save settings'); }
     finally { setSaving(false); }
@@ -66,11 +71,11 @@ export default function SettingsPage() {
   };
 
   const tabs = [
-    { key: 'general', label: '🏢 General', adminOnly: false },
-    { key: 'financial', label: '💰 Financial', adminOnly: true },
-    { key: 'notifications', label: '🔔 Notifications', adminOnly: false },
-    { key: 'security', label: '🔒 Security', adminOnly: true },
-    { key: 'backup', label: '☁️ Backup', adminOnly: true },
+    { key: 'general', label: 'General', icon: <Building className="w-4 h-4" />, adminOnly: false },
+    { key: 'financial', label: 'Financial', icon: <DollarSign className="w-4 h-4" />, adminOnly: true },
+    { key: 'notifications', label: 'Notifications', icon: <Bell className="w-4 h-4" />, adminOnly: false },
+    { key: 'security', label: 'Security', icon: <Lock className="w-4 h-4" />, adminOnly: true },
+    { key: 'backup', label: 'Backup', icon: <Cloud className="w-4 h-4" />, adminOnly: true },
   ].filter(t => !t.adminOnly || isAdmin);
 
   if (loading) return <div className="flex justify-center py-20"><LoadingSpinner /></div>;
@@ -83,8 +88,9 @@ export default function SettingsPage() {
           <p className="page-subtitle">System configuration and preferences</p>
         </div>
         {isAdmin && (
-          <button onClick={handleSave} disabled={saving} className="btn-primary">
-            {saving ? 'Saving...' : '💾 Save Settings'}
+          <button onClick={handleSave} disabled={saving} className="btn-primary flex items-center gap-2">
+            <Save className="w-4 h-4" />
+            {saving ? 'Saving...' : 'Save Settings'}
           </button>
         )}
       </div>
@@ -92,8 +98,8 @@ export default function SettingsPage() {
       <div className="flex gap-1 bg-dark-100 p-1 rounded-xl w-fit">
         {tabs.map((t) => (
           <button key={t.key} onClick={() => setTab(t.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === t.key ? 'bg-white text-primary-900 shadow-sm' : 'text-dark-500 hover:text-dark-700'}`}>
-            {t.label}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${tab === t.key ? 'bg-white text-primary-900 shadow-sm' : 'text-dark-500 hover:text-dark-700'}`}>
+            {t.icon}{t.label}
           </button>
         ))}
       </div>
@@ -126,7 +132,7 @@ export default function SettingsPage() {
             <select className="input-field" value={settings.currency || 'INR'} onChange={(e) => updateSetting('currency', e.target.value)}>
               {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
-            <p className="text-xs text-dark-400 mt-1">All amounts will be displayed in this currency</p>
+            <p className="text-xs text-dark-400 mt-1">All amounts will be displayed in this currency after saving</p>
           </div>
           <div>
             <label className="input-label">Currency Symbol</label>
@@ -190,7 +196,10 @@ export default function SettingsPage() {
             <p className="text-xs text-dark-400 mt-1">Default: 3600 (1 hour). Set 0 to disable.</p>
           </div>
           <div className="bg-primary-50 border border-primary-200 rounded-lg p-4">
-            <h4 className="font-semibold text-primary-900 mb-2">🛡️ Security Features</h4>
+            <div className="flex items-center gap-2 mb-2">
+              <Shield className="w-4 h-4 text-primary-800" />
+              <h4 className="font-semibold text-primary-900">Security Features</h4>
+            </div>
             <ul className="text-sm text-primary-800 space-y-1">
               <li>✓ JWT-based authentication with refresh tokens</li>
               <li>✓ Account lockout after 5 failed login attempts</li>
@@ -218,21 +227,24 @@ export default function SettingsPage() {
           </div>
 
           <div className="border border-dark-200 rounded-xl p-4 space-y-3">
-            <h4 className="font-semibold text-dark-800">📦 Manual Backup</h4>
+            <h4 className="font-semibold text-dark-800">Manual Backup</h4>
             <p className="text-sm text-dark-500">Download a JSON backup of all data or upload to Google Drive.</p>
             <div className="flex gap-3">
-              <button onClick={handleBackup} disabled={backuping} className="btn-primary">
-                {backuping ? 'Creating backup...' : '⬇ Download Backup'}
+              <button onClick={handleBackup} disabled={backuping} className="btn-primary flex items-center gap-2">
+                <Download className="w-4 h-4" />
+                {backuping ? 'Creating backup...' : 'Download Backup'}
               </button>
-              <button onClick={getGoogleAuthUrl} className="btn-secondary">
-                ☁️ Connect Google Drive
+              <button onClick={getGoogleAuthUrl} className="btn-secondary flex items-center gap-2">
+                <Cloud className="w-4 h-4" />
+                Connect Google Drive
               </button>
             </div>
           </div>
 
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex gap-2">
+            <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
             <p className="text-xs text-blue-800">
-              ℹ️ Backups include all users, loans, transactions, and ledger entries.
+              Backups include all users, loans, transactions, and ledger entries.
               Google Drive backups require OAuth2 authorization.
             </p>
           </div>

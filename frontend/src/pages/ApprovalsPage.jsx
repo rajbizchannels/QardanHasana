@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
+import { CreditCard, FileText, Paperclip, User, Trash2, Users } from 'lucide-react';
 import api from '../utils/api';
-import { formatCurrency, formatDateTime } from '../utils/helpers';
+import { formatDateTime } from '../utils/helpers';
 import StatusBadge from '../components/common/StatusBadge';
 import Pagination from '../components/common/Pagination';
 import Modal from '../components/common/Modal';
@@ -8,9 +9,19 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
 const PRIORITY_COLORS = { urgent: 'badge-red', high: 'badge-yellow', normal: 'badge-blue', low: 'badge-gray' };
-const TYPE_ICONS = {
-  transaction: '💳', loan: '📋', document: '📎', user_profile: '👤',
-  account_deletion: '🗑️', transaction_deletion: '🗑️', user_creation: '👥',
+
+const typeIcon = (type) => {
+  const cls = 'w-5 h-5 text-dark-500';
+  switch (type) {
+    case 'transaction': return <CreditCard className={cls} />;
+    case 'loan': return <FileText className={cls} />;
+    case 'document': return <Paperclip className={cls} />;
+    case 'user_profile': return <User className={cls} />;
+    case 'account_deletion':
+    case 'transaction_deletion': return <Trash2 className={cls} />;
+    case 'user_creation': return <Users className={cls} />;
+    default: return <FileText className={cls} />;
+  }
 };
 
 export default function ApprovalsPage() {
@@ -108,7 +119,7 @@ export default function ApprovalsPage() {
                 <div key={a.id} className="border border-dark-100 rounded-xl p-4 hover:shadow-sm transition-shadow">
                   <div className="flex items-start justify-between">
                     <div className="flex items-start gap-3">
-                      <span className="text-2xl mt-0.5">{TYPE_ICONS[a.reference_type] || '📄'}</span>
+                      <span className="mt-0.5">{typeIcon(a.reference_type)}</span>
                       <div>
                         <p className="font-semibold text-dark-900">{a.title}</p>
                         <p className="text-sm text-dark-500 mt-0.5">{a.description}</p>
@@ -126,8 +137,8 @@ export default function ApprovalsPage() {
                       </div>
                       {a.status === 'pending' && (
                         <div className="flex gap-1.5">
-                          <button onClick={() => openAction(a, 'approve')} className="btn-primary btn-sm text-xs">✓ Approve</button>
-                          <button onClick={() => openAction(a, 'reject')} className="btn-danger btn-sm text-xs">✗ Reject</button>
+                          <button onClick={() => openAction(a, 'approve')} className="btn-primary btn-sm text-xs">Approve</button>
+                          <button onClick={() => openAction(a, 'reject')} className="btn-danger btn-sm text-xs">Reject</button>
                         </div>
                       )}
                       {a.status !== 'pending' && a.reviewed_by_name && (
@@ -140,7 +151,6 @@ export default function ApprovalsPage() {
               ))}
               {approvals.length === 0 && (
                 <div className="text-center py-12">
-                  <p className="text-4xl mb-3">✅</p>
                   <p className="text-dark-400">No {statusFilter} approvals</p>
                 </div>
               )}
@@ -152,7 +162,7 @@ export default function ApprovalsPage() {
 
       {/* Action Modal */}
       <Modal isOpen={!!selected && !!action} onClose={() => { setSelected(null); setAction(''); }}
-        title={action === 'approve' ? '✓ Approve Request' : '✗ Reject Request'}
+        title={action === 'approve' ? 'Approve Request' : 'Reject Request'}
         footer={
           <div className="flex justify-end gap-2">
             <button onClick={() => { setSelected(null); setAction(''); }} className="btn-outline">Cancel</button>

@@ -18,16 +18,16 @@ const generateTokens = (userId) => {
 
 exports.login = async (req, res) => {
   try {
-    const { itsNumber, password } = req.body;
+    const { email, password } = req.body;
 
     const result = await query(
       `SELECT u.*, array_agg(DISTINCT r.name) as role_names
        FROM users u
        LEFT JOIN user_roles ur ON u.id = ur.user_id
        LEFT JOIN roles r ON ur.role_id = r.id AND r.is_active = TRUE
-       WHERE u.its_number = $1
+       WHERE u.email = $1
        GROUP BY u.id`,
-      [itsNumber]
+      [email?.toLowerCase().trim()]
     );
 
     const user = result.rows[0];

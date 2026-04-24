@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import api from '../utils/api';
-import { hasRole, formatCurrency, formatDate, formatDateTime } from '../utils/helpers';
+import { hasRole, formatDate, formatDateTime } from '../utils/helpers';
+import { useCurrency } from '../utils/currency';
 import StatusBadge from '../components/common/StatusBadge';
 import Modal from '../components/common/Modal';
 import DocumentsPage from './DocumentsPage';
@@ -13,6 +14,7 @@ export default function LoanDetailPage() {
   const { id } = useParams();
   const { user } = useSelector((s) => s.auth);
   const isAdmin = hasRole(user, 'admin', 'accountant');
+  const fmt = useCurrency();
   const navigate = useNavigate();
   const [loan, setLoan] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -74,9 +76,9 @@ export default function LoanDetailPage() {
           <div className="card">
             <h3 className="text-primary-900 font-semibold mb-4 border-b pb-2">Loan Details</h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-              <div><p className="text-xs text-dark-400">Principal Amount</p><p className="font-bold text-lg text-primary-900">{formatCurrency(loan.principal_amount)}</p></div>
-              <div><p className="text-xs text-dark-400">Outstanding</p><p className="font-bold text-lg text-red-600">{formatCurrency(loan.outstanding_balance)}</p></div>
-              <div><p className="text-xs text-dark-400">Monthly Installment</p><p className="font-bold">{formatCurrency(loan.monthly_installment)}</p></div>
+              <div><p className="text-xs text-dark-400">Principal Amount</p><p className="font-bold text-lg text-primary-900">{fmt(loan.principal_amount)}</p></div>
+              <div><p className="text-xs text-dark-400">Outstanding</p><p className="font-bold text-lg text-red-600">{fmt(loan.outstanding_balance)}</p></div>
+              <div><p className="text-xs text-dark-400">Monthly Installment</p><p className="font-bold">{fmt(loan.monthly_installment)}</p></div>
               <div><p className="text-xs text-dark-400">Total Installments</p><p className="font-semibold">{loan.total_installments}</p></div>
               <div><p className="text-xs text-dark-400">Paid Installments</p><p className="font-semibold text-green-600">{loan.paid_installments}</p></div>
               <div><p className="text-xs text-dark-400">Remaining</p><p className="font-semibold">{loan.total_installments - loan.paid_installments}</p></div>
@@ -129,7 +131,7 @@ export default function LoanDetailPage() {
                     <tr key={t.id}>
                       <td className="font-mono text-xs">{t.transaction_number}</td>
                       <td><span className="capitalize">{t.type?.replace(/_/g, ' ')}</span></td>
-                      <td className="font-semibold">{formatCurrency(t.amount)}</td>
+                      <td className="font-semibold">{fmt(t.amount)}</td>
                       <td className="text-xs">{formatDateTime(t.transaction_date)}</td>
                       <td><StatusBadge status={t.status} /></td>
                     </tr>
@@ -193,7 +195,7 @@ export default function LoanDetailPage() {
       >
         <div>
           <p className="text-dark-600 mb-3">
-            You are about to <strong>{action}</strong> loan <strong>{loan.loan_number}</strong> for <strong>{formatCurrency(loan.principal_amount)}</strong>.
+            You are about to <strong>{action}</strong> loan <strong>{loan.loan_number}</strong> for <strong>{fmt(loan.principal_amount)}</strong>.
           </p>
           <div>
             <label className="input-label">{action === 'approve' ? 'Notes (optional)' : 'Rejection Reason'}</label>

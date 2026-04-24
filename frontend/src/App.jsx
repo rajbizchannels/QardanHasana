@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { fetchMe } from './store/slices/authSlice';
+import { fetchCurrency } from './store/slices/settingsSlice';
 
 import Layout from './components/layout/Layout';
 import LoginPage from './pages/LoginPage';
@@ -45,6 +46,7 @@ export default function App() {
   const dispatch = useDispatch();
 
   useEffect(() => {
+    dispatch(fetchCurrency());
     const token = localStorage.getItem('accessToken');
     if (token) {
       dispatch(fetchMe());

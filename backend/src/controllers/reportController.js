@@ -39,7 +39,7 @@ exports.getCashStatus = async (req, res) => {
 
     const overdueDetails = await query(
       `SELECT l.loan_number, l.monthly_installment, l.next_due_date, l.outstanding_balance,
-              l.overdue_amount, u.first_name || ' ' || u.last_name as debtor_name,
+              dp.overdue_amount, u.first_name || ' ' || u.last_name as debtor_name,
               u.its_number, u.email, u.phone
        FROM loans l
        JOIN debtor_profiles dp ON l.debtor_id = dp.id
