@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
+import { useSelector } from 'react-redux';
+import { RefreshCw, AlertTriangle } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid } from 'recharts';
 import api from '../utils/api';
-import { formatCurrency, formatDate } from '../utils/helpers';
+import { formatDate } from '../utils/helpers';
+import { useCurrency } from '../utils/currency';
 import StatusBadge from '../components/common/StatusBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
@@ -15,6 +18,8 @@ const StatBox = ({ label, value, sub, color }) => (
 );
 
 export default function ReportsPage() {
+  const fmt = useCurrency();
+  const currency = useSelector((s) => s.settings.currency);
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('overview');
@@ -56,15 +61,15 @@ export default function ReportsPage() {
           <h1 className="page-title">Reports & Analytics</h1>
           <p className="page-subtitle">Cash flow status and collection reports</p>
         </div>
-        <button onClick={fetchData} className="btn-outline btn-sm">🔄 Refresh</button>
+        <button onClick={fetchData} className="btn-outline btn-sm flex items-center gap-1.5"><RefreshCw className="w-4 h-4" /> Refresh</button>
       </div>
 
       {/* KPI Row */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-        <StatBox label="Total Disbursed" value={formatCurrency(summary?.totalDisbursed)} color="border-l-blue-500" />
-        <StatBox label="Total Repaid" value={formatCurrency(summary?.totalRepaid)} color="border-l-green-600" />
-        <StatBox label="Outstanding" value={formatCurrency(summary?.totalOutstanding)} color="border-l-yellow-500" />
-        <StatBox label="Overdue Amount" value={formatCurrency(summary?.overdueAmount)} color="border-l-red-600" sub={`${summary?.overdueCount} accounts`} />
+        <StatBox label="Total Disbursed" value={fmt(summary?.totalDisbursed)} color="border-l-blue-500" />
+        <StatBox label="Total Repaid" value={fmt(summary?.totalRepaid)} color="border-l-green-600" />
+        <StatBox label="Outstanding" value={fmt(summary?.totalOutstanding)} color="border-l-yellow-500" />
+        <StatBox label="Overdue Amount" value={fmt(summary?.overdueAmount)} color="border-l-red-600" sub={`${summary?.overdueCount} accounts`} />
         <StatBox label="Active Loans" value={summary?.activeLoansCount || 0} color="border-l-primary-800" />
         <StatBox label="Currency" value={currency || 'INR'} color="border-l-gold-500" />
       </div>
@@ -87,8 +92,8 @@ export default function ReportsPage() {
             <ResponsiveContainer width="100%" height={250}>
               <BarChart data={chartData}>
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}K`} />
-                <Tooltip formatter={(v) => formatCurrency(v)} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${currency} ${(v / 1000).toFixed(0)}K`} />
+                <Tooltip formatter={(v) => fmt(v)} />
                 <Bar dataKey="value" fill="#1B4332" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -110,7 +115,7 @@ export default function ReportsPage() {
               </div>
               <div className="flex justify-between items-center py-2 border-b border-dark-50">
                 <span className="text-sm text-dark-600">Avg Loan Size</span>
-                <span className="font-bold">{formatCurrency(summary?.activeLoansCount > 0 ? summary.totalOutstanding / summary.activeLoansCount : 0)}</span>
+                <span className="font-bold">{fmt(summary?.activeLoansCount > 0 ? summary.totalOutstanding / summary.activeLoansCount : 0)}</span>
               </div>
             </div>
           </div>
@@ -131,7 +136,7 @@ export default function ReportsPage() {
                     <td>{r.payer_name || '—'}</td>
                     <td className="text-xs">{r.its_number || '—'}</td>
                     <td className="font-mono text-xs">{r.loan_number || '—'}</td>
-                    <td className="font-semibold text-green-700">{formatCurrency(r.amount)}</td>
+                    <td className="font-semibold text-green-700">{fmt(r.amount)}</td>
                     <td className="text-xs">{formatDate(r.transaction_date)}</td>
                   </tr>
                 ))}
@@ -157,9 +162,9 @@ export default function ReportsPage() {
                     <td className="font-medium">{d.debtor_name}</td>
                     <td className="text-xs">{d.its_number}</td>
                     <td className="font-mono text-xs">{d.loan_number}</td>
-                    <td className="font-semibold">{formatCurrency(d.monthly_installment)}</td>
+                    <td className="font-semibold">{fmt(d.monthly_installment)}</td>
                     <td>{formatDate(d.next_due_date)}</td>
-                    <td className="text-orange-600 font-semibold">{formatCurrency(d.outstanding_balance)}</td>
+                    <td className="text-orange-600 font-semibold">{fmt(d.outstanding_balance)}</td>
                     <td><a href={`tel:${d.phone}`} className="text-primary-800 text-xs hover:underline">{d.phone}</a></td>
                   </tr>
                 ))}
@@ -175,7 +180,7 @@ export default function ReportsPage() {
       {/* Overdue */}
       {tab === 'overdue' && (
         <div className="card">
-          <h3 className="font-semibold mb-4 text-red-700">⚠️ Overdue Accounts ({(overdueAccounts || []).length})</h3>
+          <h3 className="font-semibold mb-4 text-red-700 flex items-center gap-2"><AlertTriangle className="w-4 h-4" /> Overdue Accounts ({(overdueAccounts || []).length})</h3>
           <div className="table-container">
             <table className="table">
               <thead><tr><th>Debtor</th><th>ITS</th><th>Loan #</th><th>Overdue Since</th><th>Overdue Amount</th><th>Outstanding</th><th>Contact</th></tr></thead>
@@ -186,13 +191,13 @@ export default function ReportsPage() {
                     <td className="text-xs">{o.its_number}</td>
                     <td className="font-mono text-xs">{o.loan_number}</td>
                     <td className="text-red-600">{formatDate(o.next_due_date)}</td>
-                    <td className="font-bold text-red-700">{formatCurrency(o.overdue_amount || o.monthly_installment)}</td>
-                    <td className="font-semibold text-red-600">{formatCurrency(o.outstanding_balance)}</td>
+                    <td className="font-bold text-red-700">{fmt(o.overdue_amount || o.monthly_installment)}</td>
+                    <td className="font-semibold text-red-600">{fmt(o.outstanding_balance)}</td>
                     <td><a href={`tel:${o.phone}`} className="text-primary-800 text-xs hover:underline">{o.phone}</a></td>
                   </tr>
                 ))}
                 {(!overdueAccounts || overdueAccounts.length === 0) && (
-                  <tr><td colSpan={7} className="text-center py-6 text-dark-400">No overdue accounts 🎉</td></tr>
+                  <tr><td colSpan={7} className="text-center py-6 text-dark-400">No overdue accounts</td></tr>
                 )}
               </tbody>
             </table>
@@ -213,9 +218,9 @@ export default function ReportsPage() {
                     <td className="font-medium">{c.name}</td>
                     <td className="text-xs">{c.its_number}</td>
                     <td className="font-mono text-xs">{c.creditor_number}</td>
-                    <td className="font-semibold">{formatCurrency(c.total_given)}</td>
-                    <td className="text-green-700">{formatCurrency(c.total_recovered)}</td>
-                    <td className="font-bold text-orange-700">{formatCurrency(c.outstanding_amount)}</td>
+                    <td className="font-semibold">{fmt(c.total_given)}</td>
+                    <td className="text-green-700">{fmt(c.total_recovered)}</td>
+                    <td className="font-bold text-orange-700">{fmt(c.outstanding_amount)}</td>
                   </tr>
                 ))}
                 {(!creditorSummary || creditorSummary.length === 0) && (

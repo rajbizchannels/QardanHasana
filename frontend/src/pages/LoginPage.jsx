@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { login } from '../store/slices/authSlice';
+import { Shield, BarChart2, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function LoginPage() {
   const dispatch = useDispatch();
   const navigate = useNavigate();
   const { loading, error } = useSelector((s) => s.auth);
-  const [form, setForm] = useState({ itsNumber: '', password: '' });
+  const [form, setForm] = useState({ email: '', password: '' });
   const [showPwd, setShowPwd] = useState(false);
 
   const handleSubmit = async (e) => {
@@ -48,12 +49,12 @@ export default function LoginPage() {
         </div>
         <div className="space-y-4">
           {[
-            { icon: '🛡️', text: 'Bank-level security with role-based access' },
-            { icon: '📊', text: 'Real-time ledger tracking and reporting' },
-            { icon: '✅', text: 'Full audit trail for all transactions' },
+            { icon: <Shield className="w-5 h-5" />, text: 'Bank-level security with role-based access' },
+            { icon: <BarChart2 className="w-5 h-5" />, text: 'Real-time ledger tracking and reporting' },
+            { icon: <CheckCircle className="w-5 h-5" />, text: 'Full audit trail for all transactions' },
           ].map((item, i) => (
             <div key={i} className="flex items-center gap-3">
-              <span className="text-2xl">{item.icon}</span>
+              <span className="text-gold-400">{item.icon}</span>
               <p className="text-primary-200 text-sm">{item.text}</p>
             </div>
           ))}
@@ -74,19 +75,19 @@ export default function LoginPage() {
           </div>
 
           <h2 className="text-2xl font-bold text-dark-900">Sign in to your account</h2>
-          <p className="text-dark-500 mt-1 mb-8">Use your ITS number and password to continue</p>
+          <p className="text-dark-500 mt-1 mb-8">Use your email address and password to continue</p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="input-label">ITS Number</label>
+              <label className="input-label">Email Address</label>
               <input
-                type="text"
+                type="email"
                 className="input-field"
-                placeholder="Enter your ITS number"
-                value={form.itsNumber}
-                onChange={(e) => setForm({ ...form, itsNumber: e.target.value })}
+                placeholder="Enter your email address"
+                value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })}
                 required
-                maxLength={20}
+                autoComplete="email"
               />
             </div>
 
@@ -103,7 +104,7 @@ export default function LoginPage() {
                 />
                 <button type="button" onClick={() => setShowPwd(!showPwd)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-dark-400 hover:text-dark-600">
-                  {showPwd ? '🙈' : '👁️'}
+                  {showPwd ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>

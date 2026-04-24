@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import api from '../utils/api';
-import { hasRole, formatCurrency, formatDateTime } from '../utils/helpers';
+import { hasRole, formatDateTime } from '../utils/helpers';
+import { useCurrency } from '../utils/currency';
 import StatusBadge from '../components/common/StatusBadge';
 import Pagination from '../components/common/Pagination';
 import Modal from '../components/common/Modal';
@@ -13,6 +14,7 @@ const TXN_TYPES = ['loan_disbursement', 'loan_repayment', 'deposit', 'withdrawal
 export default function TransactionsPage() {
   const { user } = useSelector((s) => s.auth);
   const isAdmin = hasRole(user, 'admin', 'accountant');
+  const fmt = useCurrency();
   const [txns, setTxns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -117,7 +119,7 @@ export default function TransactionsPage() {
                       <td><span className="badge badge-blue text-xs">{typeLabel(t.type)}</span></td>
                       <td className="text-xs">{t.from_name || '—'}</td>
                       <td className="text-xs">{t.to_name || '—'}</td>
-                      <td className="font-semibold">{formatCurrency(t.amount)}</td>
+                      <td className="font-semibold">{fmt(t.amount)}</td>
                       <td className="text-xs">{formatDateTime(t.transaction_date)}</td>
                       <td><StatusBadge status={t.status} /></td>
                       <td>
@@ -163,7 +165,7 @@ export default function TransactionsPage() {
             </select>
           </div>
           <div>
-            <label className="input-label">Amount (₹) *</label>
+            <label className="input-label">Amount *</label>
             <input type="number" className="input-field" required min="1" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
           </div>
           <div>
@@ -175,7 +177,7 @@ export default function TransactionsPage() {
               <label className="input-label">Related Loan</label>
               <select className="input-field" value={form.loanId} onChange={(e) => setForm({ ...form, loanId: e.target.value })}>
                 <option value="">Select loan...</option>
-                {loans.map(l => <option key={l.id} value={l.id}>{l.loan_number} — {formatCurrency(l.outstanding_balance)} outstanding</option>)}
+                {loans.map(l => <option key={l.id} value={l.id}>{l.loan_number} — {fmt(l.outstanding_balance)} outstanding</option>)}
               </select>
             </div>
           )}
@@ -187,7 +189,7 @@ export default function TransactionsPage() {
             <label className="input-label">Notes</label>
             <textarea className="input-field" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </div>
-          {!isAdmin && <div className="bg-yellow-50 border border-yellow-200 rounded p-3"><p className="text-xs text-yellow-800">⚠️ This transaction will be submitted for admin approval before posting to ledger.</p></div>}
+          {!isAdmin && <div className="bg-yellow-50 border border-yellow-200 rounded p-3"><p className="text-xs text-yellow-800">This transaction will be submitted for admin approval before posting to ledger.</p></div>}
         </form>
       </Modal>
 
@@ -205,7 +207,7 @@ export default function TransactionsPage() {
             ? `Are you sure you want to delete transaction <strong>${showDelete?.transaction_number}</strong>?`
             : `Submit a deletion request for transaction <strong>${showDelete?.transaction_number}</strong>? Admin approval required.`}
         </p>
-        <p className="text-sm text-dark-400 mt-2">Amount: {formatCurrency(showDelete?.amount)}</p>
+        <p className="text-sm text-dark-400 mt-2">Amount: {fmt(showDelete?.amount)}</p>
       </Modal>
     </div>
   );

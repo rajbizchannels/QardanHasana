@@ -36,7 +36,7 @@ export default function ForgotPasswordPage() {
 
         {sent ? (
           <div className="bg-green-50 border border-green-200 rounded-lg p-4 text-center">
-            <p className="text-green-700 font-medium">✅ If your email exists, a reset link has been sent.</p>
+            <p className="text-green-700 font-medium">If your email exists, a reset link has been sent.</p>
             <Link to="/login" className="text-primary-800 text-sm mt-2 block hover:underline">Return to login</Link>
           </div>
         ) : (

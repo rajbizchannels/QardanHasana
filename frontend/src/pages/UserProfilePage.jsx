@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { User, FileText, Building2, Users, Lock } from 'lucide-react';
 import api from '../utils/api';
-import { hasRole, formatDate, formatCurrency } from '../utils/helpers';
+import { hasRole, formatDate } from '../utils/helpers';
+import { useCurrency } from '../utils/currency';
 import Toggle from '../components/common/Toggle';
 import Modal from '../components/common/Modal';
 import StatusBadge from '../components/common/StatusBadge';
@@ -10,16 +12,17 @@ import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
 const TABS = [
-  { key: 'personal', label: 'Personal', icon: '👤' },
-  { key: 'debtor', label: 'Debtor', icon: '📋' },
-  { key: 'creditor', label: 'Creditor', icon: '🏦' },
-  { key: 'guarantor', label: 'Guarantor', icon: '🤝' },
+  { key: 'personal', label: 'Personal', icon: <User className="w-4 h-4" /> },
+  { key: 'debtor', label: 'Debtor', icon: <FileText className="w-4 h-4" /> },
+  { key: 'creditor', label: 'Creditor', icon: <Building2 className="w-4 h-4" /> },
+  { key: 'guarantor', label: 'Guarantor', icon: <Users className="w-4 h-4" /> },
 ];
 
 export default function UserProfilePage({ isSelf, isNew }) {
   const { id } = useParams();
   const { user: authUser } = useSelector((s) => s.auth);
   const navigate = useNavigate();
+  const fmt = useCurrency();
   const isAdmin = hasRole(authUser, 'admin');
   const isAccountant = hasRole(authUser, 'admin', 'accountant');
   const userId = isSelf ? authUser.id : id;
@@ -32,7 +35,7 @@ export default function UserProfilePage({ isSelf, isNew }) {
   const [pwdForm, setPwdForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
 
   const [form, setForm] = useState({
-    firstName: '', lastName: '', phone: '', dateOfBirth: '', gender: '', email: '',
+    itsNumber: '', firstName: '', lastName: '', phone: '', dateOfBirth: '', gender: '', email: '',
     addressLine1: '', addressLine2: '', city: '', state: '', country: 'India', postalCode: '',
     involvedInInterest: false, involvedInInsurance: false, involvedInSubstanceAbuse: false,
     involvedInCrypto: false, involvedInPonzi: false, involvedInOtherSchemes: false,
@@ -50,6 +53,7 @@ export default function UserProfilePage({ isSelf, isNew }) {
       const u = res.data.data;
       setUser(u);
       setForm({
+        itsNumber: u.its_number || '',
         firstName: u.first_name || '',
         lastName: u.last_name || '',
         phone: u.phone || '',
@@ -127,7 +131,9 @@ export default function UserProfilePage({ isSelf, isNew }) {
         <div className="flex items-center gap-2">
           {user?.is_active !== undefined && <StatusBadge status={user.is_active ? 'active' : 'inactive'} />}
           {(isSelf || userId === authUser.id) && (
-            <button onClick={() => setShowPwdModal(true)} className="btn-outline btn-sm">🔒 Change Password</button>
+            <button onClick={() => setShowPwdModal(true)} className="btn-outline btn-sm flex items-center gap-1.5">
+              <Lock className="w-4 h-4" /> Change Password
+            </button>
           )}
           {canEdit && (
             <button onClick={handleSave} disabled={saving} className="btn-primary">
@@ -140,7 +146,7 @@ export default function UserProfilePage({ isSelf, isNew }) {
       {/* Pending changes notice */}
       {user?.profile_changes_pending && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <p className="text-yellow-800 text-sm font-medium">⏳ Profile changes are pending admin approval</p>
+          <p className="text-yellow-800 text-sm font-medium">Profile changes are pending admin approval</p>
         </div>
       )}
 
@@ -154,7 +160,7 @@ export default function UserProfilePage({ isSelf, isNew }) {
               tab === t.key ? 'bg-white text-primary-900 shadow-sm' : 'text-dark-500 hover:text-dark-700'
             }`}
           >
-            <span>{t.icon}</span>{t.label}
+            {t.icon}{t.label}
           </button>
         ))}
       </div>
@@ -166,16 +172,27 @@ export default function UserProfilePage({ isSelf, isNew }) {
             <h3 className="text-primary-900 font-semibold border-b pb-2">Personal Information</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
+                <label className="input-label">ITS Number</label>
+                <input
+                  className="input-field"
+                  value={form.itsNumber}
+                  onChange={(e) => setForm({ ...form, itsNumber: e.target.value })}
+                  disabled={!canEdit}
+                  placeholder="ITS number"
+                  maxLength={20}
+                />
+              </div>
+              <div>
+                <label className="input-label">Email</label>
+                <input className="input-field" type="email" value={form.email} disabled />
+              </div>
+              <div>
                 <label className="input-label">First Name</label>
                 <input className="input-field" value={form.firstName} onChange={(e) => setForm({ ...form, firstName: e.target.value })} disabled={!canEdit} />
               </div>
               <div>
                 <label className="input-label">Last Name</label>
                 <input className="input-field" value={form.lastName} onChange={(e) => setForm({ ...form, lastName: e.target.value })} disabled={!canEdit} />
-              </div>
-              <div>
-                <label className="input-label">Email</label>
-                <input className="input-field" type="email" value={form.email} disabled />
               </div>
               <div>
                 <label className="input-label">Phone</label>
@@ -277,9 +294,9 @@ export default function UserProfilePage({ isSelf, isNew }) {
             <div className="space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
                 <div><p className="text-xs text-dark-400">Debtor Number</p><p className="font-semibold">{user.debtor_number}</p></div>
-                <div><p className="text-xs text-dark-400">Total Borrowed</p><p className="font-semibold">{formatCurrency(user.total_borrowed)}</p></div>
-                <div><p className="text-xs text-dark-400">Total Repaid</p><p className="font-semibold text-green-700">{formatCurrency(user.total_repaid)}</p></div>
-                <div><p className="text-xs text-dark-400">Outstanding</p><p className="font-semibold text-red-700">{formatCurrency(user.outstanding_balance)}</p></div>
+                <div><p className="text-xs text-dark-400">Total Borrowed</p><p className="font-semibold">{fmt(user.total_borrowed)}</p></div>
+                <div><p className="text-xs text-dark-400">Total Repaid</p><p className="font-semibold text-green-700">{fmt(user.total_repaid)}</p></div>
+                <div><p className="text-xs text-dark-400">Outstanding</p><p className="font-semibold text-red-700">{fmt(user.outstanding_balance)}</p></div>
                 <div><p className="text-xs text-dark-400">Status</p><StatusBadge status={user.debtor_status} /></div>
               </div>
               <div className="pt-3 border-t">
@@ -303,9 +320,9 @@ export default function UserProfilePage({ isSelf, isNew }) {
           {user?.creditor_id ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               <div><p className="text-xs text-dark-400">Creditor Number</p><p className="font-semibold">{user.creditor_number}</p></div>
-              <div><p className="text-xs text-dark-400">Total Given</p><p className="font-semibold">{formatCurrency(user.total_given)}</p></div>
-              <div><p className="text-xs text-dark-400">Total Recovered</p><p className="font-semibold text-green-700">{formatCurrency(user.total_recovered)}</p></div>
-              <div><p className="text-xs text-dark-400">Outstanding</p><p className="font-semibold text-orange-700">{formatCurrency(user.creditor_outstanding)}</p></div>
+              <div><p className="text-xs text-dark-400">Total Given</p><p className="font-semibold">{fmt(user.total_given)}</p></div>
+              <div><p className="text-xs text-dark-400">Total Recovered</p><p className="font-semibold text-green-700">{fmt(user.total_recovered)}</p></div>
+              <div><p className="text-xs text-dark-400">Outstanding</p><p className="font-semibold text-orange-700">{fmt(user.creditor_outstanding)}</p></div>
               <div><p className="text-xs text-dark-400">Status</p><StatusBadge status={user.creditor_status} /></div>
             </div>
           ) : (
@@ -325,7 +342,7 @@ export default function UserProfilePage({ isSelf, isNew }) {
           {user?.guarantor_id ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
               <div><p className="text-xs text-dark-400">Guarantor Number</p><p className="font-semibold">{user.guarantor_number}</p></div>
-              <div><p className="text-xs text-dark-400">Total Guaranteed</p><p className="font-semibold">{formatCurrency(user.total_guaranteed)}</p></div>
+              <div><p className="text-xs text-dark-400">Total Guaranteed</p><p className="font-semibold">{fmt(user.total_guaranteed)}</p></div>
               <div><p className="text-xs text-dark-400">Active Guarantees</p><p className="font-semibold">{user.active_guarantees}</p></div>
               <div><p className="text-xs text-dark-400">Status</p><StatusBadge status={user.guarantor_status} /></div>
             </div>

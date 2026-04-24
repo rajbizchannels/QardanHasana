@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { RefreshCw } from 'lucide-react';
 import api from '../utils/api';
 import { formatDateTime } from '../utils/helpers';
 import Pagination from '../components/common/Pagination';
@@ -51,7 +52,7 @@ export default function AuditLogsPage() {
           <h1 className="page-title">Audit Logs</h1>
           <p className="page-subtitle">{total} audit log entries</p>
         </div>
-        <button onClick={fetchLogs} className="btn-outline btn-sm">🔄 Refresh</button>
+        <button onClick={fetchLogs} className="btn-outline btn-sm flex items-center gap-1.5"><RefreshCw className="w-4 h-4" /> Refresh</button>
       </div>
 
       <div className="card">

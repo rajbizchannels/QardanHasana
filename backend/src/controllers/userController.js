@@ -167,16 +167,22 @@ exports.updateUser = async (req, res) => {
     if (!current) return res.status(404).json({ success: false, message: 'User not found' });
 
     const {
-      firstName, lastName, phone, dateOfBirth, gender,
+      itsNumber, firstName, lastName, phone, dateOfBirth, gender,
       addressLine1, addressLine2, city, state, country, postalCode,
       involvedInInterest, involvedInInsurance, involvedInSubstanceAbuse,
       involvedInCrypto, involvedInPonzi, involvedInOtherSchemes, otherSchemesDescription,
       isActive,
     } = req.body;
 
+    // Check ITS uniqueness if being changed
+    if (itsNumber && itsNumber !== current.its_number) {
+      const itsCheck = await query(`SELECT id FROM users WHERE its_number = $1 AND id != $2`, [itsNumber, id]);
+      if (itsCheck.rows[0]) return res.status(409).json({ success: false, message: 'ITS number already in use' });
+    }
+
     if (isOwnProfile && !isAdmin) {
       const changes = {
-        firstName, lastName, phone, dateOfBirth, gender,
+        itsNumber, firstName, lastName, phone, dateOfBirth, gender,
         addressLine1, addressLine2, city, state, country, postalCode,
         involvedInInterest, involvedInInsurance, involvedInSubstanceAbuse,
         involvedInCrypto, involvedInPonzi, involvedInOtherSchemes, otherSchemesDescription,
@@ -213,31 +219,32 @@ exports.updateUser = async (req, res) => {
 
     const updated = await query(
       `UPDATE users SET
-        first_name = COALESCE($1, first_name),
-        last_name = COALESCE($2, last_name),
-        phone = COALESCE($3, phone),
-        date_of_birth = COALESCE($4, date_of_birth),
-        gender = COALESCE($5, gender),
-        address_line1 = COALESCE($6, address_line1),
-        address_line2 = COALESCE($7, address_line2),
-        city = COALESCE($8, city),
-        state = COALESCE($9, state),
-        country = COALESCE($10, country),
-        postal_code = COALESCE($11, postal_code),
-        involved_in_interest = COALESCE($12, involved_in_interest),
-        involved_in_insurance = COALESCE($13, involved_in_insurance),
-        involved_in_substance_abuse = COALESCE($14, involved_in_substance_abuse),
-        involved_in_crypto = COALESCE($15, involved_in_crypto),
-        involved_in_ponzi = COALESCE($16, involved_in_ponzi),
-        involved_in_other_schemes = COALESCE($17, involved_in_other_schemes),
-        other_schemes_description = COALESCE($18, other_schemes_description),
-        is_active = COALESCE($19, is_active),
+        its_number = COALESCE($1, its_number),
+        first_name = COALESCE($2, first_name),
+        last_name = COALESCE($3, last_name),
+        phone = COALESCE($4, phone),
+        date_of_birth = COALESCE($5, date_of_birth),
+        gender = COALESCE($6, gender),
+        address_line1 = COALESCE($7, address_line1),
+        address_line2 = COALESCE($8, address_line2),
+        city = COALESCE($9, city),
+        state = COALESCE($10, state),
+        country = COALESCE($11, country),
+        postal_code = COALESCE($12, postal_code),
+        involved_in_interest = COALESCE($13, involved_in_interest),
+        involved_in_insurance = COALESCE($14, involved_in_insurance),
+        involved_in_substance_abuse = COALESCE($15, involved_in_substance_abuse),
+        involved_in_crypto = COALESCE($16, involved_in_crypto),
+        involved_in_ponzi = COALESCE($17, involved_in_ponzi),
+        involved_in_other_schemes = COALESCE($18, involved_in_other_schemes),
+        other_schemes_description = COALESCE($19, other_schemes_description),
+        is_active = COALESCE($20, is_active),
         profile_changes_pending = NULL,
         profile_change_approved_at = NOW(),
-        profile_change_approved_by = $20,
+        profile_change_approved_by = $21,
         updated_at = NOW()
-       WHERE id = $21 RETURNING *`,
-      [firstName, lastName, phone, dateOfBirth, gender,
+       WHERE id = $22 RETURNING *`,
+      [itsNumber || null, firstName, lastName, phone, dateOfBirth, gender,
        addressLine1, addressLine2, city, state, country, postalCode,
        involvedInInterest, involvedInInsurance, involvedInSubstanceAbuse,
        involvedInCrypto, involvedInPonzi, involvedInOtherSchemes, otherSchemesDescription,

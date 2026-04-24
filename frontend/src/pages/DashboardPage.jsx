@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import {
+  Wallet, Send, FileText, AlertTriangle, FolderOpen, Clock,
+  CheckCircle, Users, BookOpen,
+} from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import api from '../utils/api';
-import { formatCurrency, formatDate, hasRole } from '../utils/helpers';
+import { formatDate, hasRole } from '../utils/helpers';
+import { useCurrency } from '../utils/currency';
 import StatusBadge from '../components/common/StatusBadge';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 
@@ -15,13 +20,15 @@ const StatCard = ({ title, value, sub, icon, color = 'primary', link }) => (
         <p className="text-2xl font-bold text-dark-900 mt-1">{value}</p>
         {sub && <p className={`text-xs mt-1 ${color === 'red' ? 'text-red-600' : color === 'green' ? 'text-green-600' : 'text-dark-400'}`}>{sub}</p>}
       </div>
-      <span className="text-3xl">{icon}</span>
+      <span className={`${color === 'red' ? 'text-red-500' : color === 'green' ? 'text-green-600' : 'text-primary-700'} opacity-70`}>{icon}</span>
     </div>
   </Link>
 );
 
 export default function DashboardPage() {
   const { user } = useSelector((s) => s.auth);
+  const currency = useSelector((s) => s.settings.currency);
+  const fmt = useCurrency();
   const isAdmin = hasRole(user, 'admin', 'accountant');
   const [data, setData] = useState(null);
   const [myLoans, setMyLoans] = useState([]);
@@ -83,24 +90,24 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="My Balance"
-          value={formatCurrency(myLedger?.currentBalance || 0)}
-          icon="💰"
+          value={fmt(myLedger?.currentBalance || 0)}
+          icon={<Wallet className="w-8 h-8" />}
           link="/ledger"
           color={myLedger?.currentBalance >= 0 ? 'green' : 'red'}
         />
         {isAdmin && data && (
           <>
-            <StatCard title="Total Disbursed" value={formatCurrency(data.summary?.totalDisbursed)} icon="📤" link="/reports" />
-            <StatCard title="Total Outstanding" value={formatCurrency(data.summary?.totalOutstanding)} icon="📋" link="/reports" color="primary" />
-            <StatCard title="Overdue Amount" value={formatCurrency(data.summary?.overdueAmount)} icon="⚠️" link="/reports" color="red"
+            <StatCard title="Total Disbursed" value={fmt(data.summary?.totalDisbursed)} icon={<Send className="w-8 h-8" />} link="/reports" />
+            <StatCard title="Total Outstanding" value={fmt(data.summary?.totalOutstanding)} icon={<FileText className="w-8 h-8" />} link="/reports" color="primary" />
+            <StatCard title="Overdue Amount" value={fmt(data.summary?.overdueAmount)} icon={<AlertTriangle className="w-8 h-8" />} link="/reports" color="red"
               sub={`${data.summary?.overdueCount} accounts overdue`} />
           </>
         )}
         {!isAdmin && (
           <>
-            <StatCard title="Active Loans" value={myLoans.filter(l => l.status === 'active').length} icon="📋" link="/loans" />
-            <StatCard title="Ledger Entries" value={myLedger?.total || 0} icon="📒" link="/ledger" />
-            <StatCard title="Total Entries" value={myLedger?.total || 0} icon="📊" link="/ledger" />
+            <StatCard title="Active Loans" value={myLoans.filter(l => l.status === 'active').length} icon={<FileText className="w-8 h-8" />} link="/loans" />
+            <StatCard title="Ledger Entries" value={myLedger?.total || 0} icon={<BookOpen className="w-8 h-8" />} link="/ledger" />
+            <StatCard title="Total Entries" value={myLedger?.total || 0} icon={<BookOpen className="w-8 h-8" />} link="/ledger" />
           </>
         )}
       </div>
@@ -108,10 +115,10 @@ export default function DashboardPage() {
       {/* Admin stats row */}
       {isAdmin && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Active Loans" value={data?.summary?.activeLoansCount || 0} icon="📂" link="/loans" />
-          <StatCard title="Pending Approvals" value={approvalStats?.pending || 0} icon="⏳" link="/approvals" color={parseInt(approvalStats?.pending) > 5 ? 'red' : 'primary'} />
-          <StatCard title="Total Repaid" value={formatCurrency(data?.summary?.totalRepaid)} icon="✅" link="/reports" color="green" />
-          <StatCard title="Total Users" value="8+" icon="👥" link="/users" />
+          <StatCard title="Active Loans" value={data?.summary?.activeLoansCount || 0} icon={<FolderOpen className="w-8 h-8" />} link="/loans" />
+          <StatCard title="Pending Approvals" value={approvalStats?.pending || 0} icon={<Clock className="w-8 h-8" />} link="/approvals" color={parseInt(approvalStats?.pending) > 5 ? 'red' : 'primary'} />
+          <StatCard title="Total Repaid" value={fmt(data?.summary?.totalRepaid)} icon={<CheckCircle className="w-8 h-8" />} link="/reports" color="green" />
+          <StatCard title="Total Users" value="8+" icon={<Users className="w-8 h-8" />} link="/users" />
         </div>
       )}
 
@@ -126,8 +133,8 @@ export default function DashboardPage() {
             <ResponsiveContainer width="100%" height={240}>
               <BarChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                 <XAxis dataKey="name" tick={{ fontSize: 12 }} />
-                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}K`} />
-                <Tooltip formatter={(v) => formatCurrency(v)} />
+                <YAxis tick={{ fontSize: 11 }} tickFormatter={(v) => `${currency} ${(v / 1000).toFixed(0)}K`} />
+                <Tooltip formatter={(v) => fmt(v)} />
                 <Bar dataKey="amount" fill="#1B4332" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
@@ -144,7 +151,7 @@ export default function DashboardPage() {
                   <Pie data={pieData} dataKey="value" cx="50%" cy="50%" outerRadius={70} label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`} labelLine={false}>
                     {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                   </Pie>
-                  <Tooltip formatter={(v) => formatCurrency(v)} />
+                  <Tooltip formatter={(v) => fmt(v)} />
                 </PieChart>
               </ResponsiveContainer>
               <div className="space-y-1 mt-2">
@@ -154,7 +161,7 @@ export default function DashboardPage() {
                       <span className="w-3 h-3 rounded-full" style={{ background: d.color }} />
                       {d.name}
                     </span>
-                    <span className="font-medium">{formatCurrency(d.value)}</span>
+                    <span className="font-medium">{fmt(d.value)}</span>
                   </div>
                 ))}
               </div>
@@ -170,7 +177,7 @@ export default function DashboardPage() {
                   <Link key={loan.id} to={`/loans/${loan.id}`} className="flex items-center justify-between p-2 hover:bg-dark-50 rounded-lg transition-colors">
                     <div>
                       <p className="text-sm font-medium text-dark-800">{loan.loan_number}</p>
-                      <p className="text-xs text-dark-400">{formatCurrency(loan.outstanding_balance)} outstanding</p>
+                      <p className="text-xs text-dark-400">{fmt(loan.outstanding_balance)} outstanding</p>
                     </div>
                     <StatusBadge status={loan.status} />
                   </Link>
@@ -201,7 +208,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <span className={`text-sm font-semibold ${e.entry_type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
-                  {e.entry_type === 'credit' ? '+' : '-'}{formatCurrency(e.amount)}
+                  {e.entry_type === 'credit' ? '+' : '-'}{fmt(e.amount)}
                 </span>
               </div>
             ))}
@@ -224,7 +231,7 @@ export default function DashboardPage() {
                   <p className="text-sm font-medium text-dark-700">{item.debtor_name || item.loan_number}</p>
                   <p className="text-xs text-dark-400">Due: {formatDate(item.next_due_date)}</p>
                 </div>
-                <span className="text-sm font-semibold text-primary-900">{formatCurrency(item.monthly_installment)}</span>
+                <span className="text-sm font-semibold text-primary-900">{fmt(item.monthly_installment)}</span>
               </div>
             ))}
             {(isAdmin ? (data?.dueThisCycle || []) : myLoans).length === 0 && (

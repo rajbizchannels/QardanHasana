@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import api from '../utils/api';
-import { hasRole, formatCurrency, formatDate } from '../utils/helpers';
+import { hasRole, formatDate } from '../utils/helpers';
+import { useCurrency } from '../utils/currency';
 import StatusBadge from '../components/common/StatusBadge';
 import Pagination from '../components/common/Pagination';
 import Modal from '../components/common/Modal';
@@ -18,6 +19,7 @@ const defaultLoan = {
 export default function LoansPage() {
   const { user } = useSelector((s) => s.auth);
   const isAdmin = hasRole(user, 'admin', 'accountant');
+  const fmt = useCurrency();
   const navigate = useNavigate();
   const [loans, setLoans] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -125,9 +127,9 @@ export default function LoansPage() {
                           <p className="text-xs text-dark-400">{l.debtor_its}</p>
                         </div>
                       </td>
-                      <td className="font-semibold">{formatCurrency(l.principal_amount)}</td>
-                      <td>{formatCurrency(l.monthly_installment)}/mo</td>
-                      <td className={l.is_overdue ? 'text-red-600 font-semibold' : ''}>{formatCurrency(l.outstanding_balance)}</td>
+                      <td className="font-semibold">{fmt(l.principal_amount)}</td>
+                      <td>{fmt(l.monthly_installment)}/mo</td>
+                      <td className={l.is_overdue ? 'text-red-600 font-semibold' : ''}>{fmt(l.outstanding_balance)}</td>
                       <td className={l.is_overdue ? 'text-red-600' : ''}>{formatDate(l.next_due_date)}</td>
                       <td>
                         <div className="flex flex-col gap-1">
@@ -175,12 +177,12 @@ export default function LoansPage() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="input-label">Principal Amount (₹) *</label>
+              <label className="input-label">Principal Amount *</label>
               <input type="number" className="input-field" required min="1000" value={form.principalAmount}
                 onChange={(e) => setForm({ ...form, principalAmount: e.target.value })} />
             </div>
             <div>
-              <label className="input-label">Monthly Installment (₹) *</label>
+              <label className="input-label">Monthly Installment *</label>
               <input type="number" className="input-field" required min="100" value={form.monthlyInstallment}
                 onChange={(e) => setForm({ ...form, monthlyInstallment: e.target.value })} />
             </div>

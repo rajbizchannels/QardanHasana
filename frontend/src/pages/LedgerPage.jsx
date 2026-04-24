@@ -2,7 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import api from '../utils/api';
-import { hasRole, formatCurrency, formatDateTime, formatDate } from '../utils/helpers';
+import { hasRole, formatDateTime, formatDate } from '../utils/helpers';
+import { useCurrency } from '../utils/currency';
 import Pagination from '../components/common/Pagination';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
@@ -11,6 +12,7 @@ export default function LedgerPage() {
   const { userId: paramUserId } = useParams();
   const { user } = useSelector((s) => s.auth);
   const isAdmin = hasRole(user, 'admin', 'accountant');
+  const fmt = useCurrency();
   const targetUserId = paramUserId || user.id;
 
   const [entries, setEntries] = useState([]);
@@ -78,7 +80,7 @@ export default function LedgerPage() {
                         <td className="font-mono text-xs">{a.its_number}</td>
                         <td className="font-medium">{a.name}</td>
                         <td className="text-xs">{a.email}</td>
-                        <td className={`font-semibold ${parseFloat(a.balance) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{formatCurrency(a.balance)}</td>
+                        <td className={`font-semibold ${parseFloat(a.balance) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(a.balance)}</td>
                         <td>{a.entry_count}</td>
                         <td className="text-xs">{a.last_activity ? formatDate(a.last_activity) : '—'}</td>
                         <td><Link to={`/ledger/${a.id}`} className="text-primary-800 hover:underline text-sm">View Ledger</Link></td>
@@ -108,7 +110,7 @@ export default function LedgerPage() {
         </div>
         <div className={`text-right`}>
           <p className="text-sm text-dark-500">Current Balance</p>
-          <p className={`text-2xl font-bold ${balance >= 0 ? 'text-green-700' : 'text-red-600'}`}>{formatCurrency(balance)}</p>
+          <p className={`text-2xl font-bold ${balance >= 0 ? 'text-green-700' : 'text-red-600'}`}>{fmt(balance)}</p>
         </div>
       </div>
 
@@ -117,18 +119,18 @@ export default function LedgerPage() {
         <div className="card text-center">
           <p className="text-xs text-dark-400 mb-1">Total Credits</p>
           <p className="font-bold text-green-700 text-lg">
-            {formatCurrency(entries.filter(e => e.entry_type === 'credit').reduce((s, e) => s + parseFloat(e.amount), 0))}
+            {fmt(entries.filter(e => e.entry_type === 'credit').reduce((s, e) => s + parseFloat(e.amount), 0))}
           </p>
         </div>
         <div className="card text-center">
           <p className="text-xs text-dark-400 mb-1">Total Debits</p>
           <p className="font-bold text-red-600 text-lg">
-            {formatCurrency(entries.filter(e => e.entry_type === 'debit').reduce((s, e) => s + parseFloat(e.amount), 0))}
+            {fmt(entries.filter(e => e.entry_type === 'debit').reduce((s, e) => s + parseFloat(e.amount), 0))}
           </p>
         </div>
         <div className="card text-center">
           <p className="text-xs text-dark-400 mb-1">Net Balance</p>
-          <p className={`font-bold text-lg ${balance >= 0 ? 'text-green-700' : 'text-red-600'}`}>{formatCurrency(balance)}</p>
+          <p className={`font-bold text-lg ${balance >= 0 ? 'text-green-700' : 'text-red-600'}`}>{fmt(balance)}</p>
         </div>
       </div>
 
@@ -169,10 +171,10 @@ export default function LedgerPage() {
                         </span>
                       </td>
                       <td className={`font-semibold ${e.entry_type === 'credit' ? 'text-green-600' : 'text-red-600'}`}>
-                        {e.entry_type === 'credit' ? '+' : '-'}{formatCurrency(e.amount)}
+                        {e.entry_type === 'credit' ? '+' : '-'}{fmt(e.amount)}
                       </td>
                       <td className={`font-medium ${parseFloat(e.balance_after) >= 0 ? 'text-dark-700' : 'text-red-600'}`}>
-                        {formatCurrency(e.balance_after)}
+                        {fmt(e.balance_after)}
                       </td>
                     </tr>
                   ))}

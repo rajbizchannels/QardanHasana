@@ -2,9 +2,9 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../utils/api';
 import toast from 'react-hot-toast';
 
-export const login = createAsyncThunk('auth/login', async ({ itsNumber, password }, { rejectWithValue }) => {
+export const login = createAsyncThunk('auth/login', async ({ email, password }, { rejectWithValue }) => {
   try {
-    const res = await api.post('/auth/login', { itsNumber, password });
+    const res = await api.post('/auth/login', { email, password });
     const { accessToken, refreshToken, user } = res.data.data;
     localStorage.setItem('accessToken', accessToken);
     localStorage.setItem('refreshToken', refreshToken);
