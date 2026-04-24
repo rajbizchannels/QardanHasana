@@ -45,7 +45,7 @@ export default function ReportsPage() {
 
   if (loading) return <div className="flex justify-center py-20"><LoadingSpinner size="lg" text="Loading reports..." /></div>;
 
-  const { summary, recentCollections, dueThisCycle, overdueAccounts, creditorSummary, currency } = data || {};
+  const { summary, recentCollections, dueThisCycle, overdueAccounts, creditorSummary } = data || {};
 
   const chartData = [
     { name: 'Total Disbursed', value: summary?.totalDisbursed || 0 },
