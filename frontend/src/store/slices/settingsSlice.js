@@ -1,10 +1,14 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../utils/api';
 
-export const fetchCurrency = createAsyncThunk('settings/fetchCurrency', async () => {
-  const res = await api.get('/settings');
-  const curr = res.data.data?.find(s => s.key === 'currency');
-  return curr?.value || 'INR';
+export const fetchCurrency = createAsyncThunk('settings/fetchCurrency', async (_, { rejectWithValue }) => {
+  try {
+    const res = await api.get('/settings');
+    const curr = res.data.data?.find(s => s.key === 'currency');
+    return curr?.value || 'INR';
+  } catch {
+    return rejectWithValue('INR');
+  }
 });
 
 const settingsSlice = createSlice({

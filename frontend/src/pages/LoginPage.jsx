@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { login } from '../store/slices/authSlice';
+import { fetchCurrency } from '../store/slices/settingsSlice';
 import { Shield, BarChart2, CheckCircle, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -16,6 +17,7 @@ export default function LoginPage() {
     e.preventDefault();
     const result = await dispatch(login(form));
     if (login.fulfilled.match(result)) {
+      dispatch(fetchCurrency());
       toast.success('Welcome back!');
       navigate('/dashboard');
     } else {

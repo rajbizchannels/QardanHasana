@@ -10,6 +10,61 @@ import toast from 'react-hot-toast';
 
 const PRIORITY_COLORS = { urgent: 'badge-red', high: 'badge-yellow', normal: 'badge-blue', low: 'badge-gray' };
 
+const PROFILE_FIELD_LABELS = {
+  firstName: 'First Name', lastName: 'Last Name', phone: 'Phone',
+  addressLine1: 'Address', city: 'City', itsNumber: 'ITS Number',
+  involvedInInterest: 'Involved in Interest', involvedInCrypto: 'Involved in Crypto',
+};
+
+const MetadataPanel = ({ approval }) => {
+  if (!approval.metadata) return null;
+  let meta;
+  try { meta = typeof approval.metadata === 'string' ? JSON.parse(approval.metadata) : approval.metadata; }
+  catch { return null; }
+
+  if (approval.reference_type === 'user_profile') {
+    const entries = Object.entries(meta).filter(([k, v]) => PROFILE_FIELD_LABELS[k] && v !== undefined && v !== null && v !== '');
+    if (!entries.length) return null;
+    return (
+      <div className="mt-2 bg-blue-50 border border-blue-100 rounded-lg p-2">
+        <p className="text-xs font-semibold text-blue-700 mb-1.5">Requested Changes:</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+          {entries.map(([key, val]) => (
+            <div key={key} className="flex gap-1.5 text-xs">
+              <span className="text-dark-500 flex-shrink-0">{PROFILE_FIELD_LABELS[key]}:</span>
+              <span className="font-medium text-dark-800">{String(val)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (approval.reference_type === 'transaction' || approval.reference_type === 'transaction_deletion') {
+    const items = [
+      meta.type && { label: 'Type', value: meta.type.replace(/_/g, ' ') },
+      meta.amount && { label: 'Amount', value: meta.amount },
+      meta.transactionNumber && { label: 'Ref #', value: meta.transactionNumber, mono: true },
+    ].filter(Boolean);
+    if (!items.length) return null;
+    return (
+      <div className="mt-2 bg-amber-50 border border-amber-100 rounded-lg p-2">
+        <p className="text-xs font-semibold text-amber-700 mb-1.5">Transaction Details:</p>
+        <div className="flex flex-wrap gap-x-4 gap-y-1">
+          {items.map(({ label, value, mono }) => (
+            <span key={label} className="text-xs">
+              <span className="text-dark-500">{label}: </span>
+              <span className={`font-medium text-dark-800 ${mono ? 'font-mono' : ''}`}>{value}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+};
+
 const typeIcon = (type) => {
   const cls = 'w-5 h-5 text-dark-500';
   switch (type) {
@@ -123,6 +178,7 @@ export default function ApprovalsPage() {
                       <div>
                         <p className="font-semibold text-dark-900">{a.title}</p>
                         <p className="text-sm text-dark-500 mt-0.5">{a.description}</p>
+                        <MetadataPanel approval={a} />
                         <div className="flex items-center gap-2 mt-2">
                           <span className="text-xs text-dark-400">By: <span className="font-medium text-dark-600">{a.requested_by_name}</span> (ITS: {a.requested_by_its})</span>
                           <span className="text-dark-200">·</span>

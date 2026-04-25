@@ -14,6 +14,12 @@ exports.getLedger = async (req, res) => {
     let conditions = [`le.user_id = $1`];
     const params = [userId];
 
+    // Role-based filtering: creditors see only non-loan entries, debtors see only loan entries
+    const isCreditorOnly = !isAdmin && req.user.roles.includes('creditor') && !req.user.roles.includes('debtor');
+    const isDebtorOnly = !isAdmin && req.user.roles.includes('debtor') && !req.user.roles.includes('creditor');
+    if (isCreditorOnly) conditions.push(`le.loan_id IS NULL`);
+    if (isDebtorOnly) conditions.push(`le.loan_id IS NOT NULL`);
+
     if (startDate) { params.push(startDate); conditions.push(`le.entry_date >= $${params.length}`); }
     if (endDate) { params.push(endDate); conditions.push(`le.entry_date <= $${params.length}`); }
 

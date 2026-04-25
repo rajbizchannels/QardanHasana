@@ -4,6 +4,7 @@ import { useSelector } from 'react-redux';
 import api from '../utils/api';
 import { hasRole, formatDateTime, formatDate } from '../utils/helpers';
 import { useCurrency } from '../utils/currency';
+import { ArrowDownCircle, ArrowUpCircle } from 'lucide-react';
 import Pagination from '../components/common/Pagination';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
@@ -27,6 +28,8 @@ export default function LedgerPage() {
   const [accTotal, setAccTotal] = useState(0);
   const [accTotalPages, setAccTotalPages] = useState(1);
   const viewingAll = isAdmin && !paramUserId;
+  const isCreditorView = !isAdmin && hasRole(user, 'creditor') && !hasRole(user, 'debtor');
+  const isDebtorView = !isAdmin && hasRole(user, 'debtor') && !hasRole(user, 'creditor');
 
   useEffect(() => {
     if (viewingAll) fetchAllAccounts();
@@ -105,7 +108,9 @@ export default function LedgerPage() {
           {paramUserId && isAdmin && (
             <Link to="/ledger" className="text-sm text-dark-400 hover:text-dark-700 mb-1 block">← All Accounts</Link>
           )}
-          <h1 className="page-title">{paramUserId && paramUserId !== user.id ? 'Account Ledger' : 'My Ledger'}</h1>
+          <h1 className="page-title">
+            {isCreditorView ? 'Husain Scheme Account' : isDebtorView ? 'My Loan Account' : paramUserId && paramUserId !== user.id ? 'Account Ledger' : 'My Ledger'}
+          </h1>
           <p className="page-subtitle">{total} entries</p>
         </div>
         <div className={`text-right`}>
@@ -117,19 +122,27 @@ export default function LedgerPage() {
       {/* Balance summary */}
       <div className="grid grid-cols-3 gap-4">
         <div className="card text-center">
-          <p className="text-xs text-dark-400 mb-1">Total Credits</p>
+          <div className="flex justify-center mb-1"><ArrowDownCircle className="w-5 h-5 text-green-600" /></div>
+          <p className="text-xs text-dark-400 mb-1">
+            {isCreditorView ? 'Total Deposited' : isDebtorView ? 'Total Received' : 'Total Credits'}
+          </p>
           <p className="font-bold text-green-700 text-lg">
             {fmt(entries.filter(e => e.entry_type === 'credit').reduce((s, e) => s + parseFloat(e.amount), 0))}
           </p>
         </div>
         <div className="card text-center">
-          <p className="text-xs text-dark-400 mb-1">Total Debits</p>
+          <div className="flex justify-center mb-1"><ArrowUpCircle className="w-5 h-5 text-red-500" /></div>
+          <p className="text-xs text-dark-400 mb-1">
+            {isCreditorView ? 'Total Withdrawn' : isDebtorView ? 'Total Repaid' : 'Total Debits'}
+          </p>
           <p className="font-bold text-red-600 text-lg">
             {fmt(entries.filter(e => e.entry_type === 'debit').reduce((s, e) => s + parseFloat(e.amount), 0))}
           </p>
         </div>
         <div className="card text-center">
-          <p className="text-xs text-dark-400 mb-1">Net Balance</p>
+          <p className="text-xs text-dark-400 mb-1">
+            {isCreditorView ? 'Scheme Balance' : isDebtorView ? 'Outstanding' : 'Net Balance'}
+          </p>
           <p className={`font-bold text-lg ${balance >= 0 ? 'text-green-700' : 'text-red-600'}`}>{fmt(balance)}</p>
         </div>
       </div>

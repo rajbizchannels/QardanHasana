@@ -82,14 +82,15 @@ exports.reviewApproval = async (req, res) => {
             city = COALESCE($5, city),
             involved_in_interest = COALESCE($6, involved_in_interest),
             involved_in_crypto = COALESCE($7, involved_in_crypto),
+            its_number = COALESCE($8, its_number),
             profile_changes_pending = NULL,
             profile_change_approved_at = NOW(),
-            profile_change_approved_by = $8,
+            profile_change_approved_by = $9,
             updated_at = NOW()
-           WHERE id = $9`,
+           WHERE id = $10`,
           [changes.firstName, changes.lastName, changes.phone, changes.addressLine1,
            changes.city, changes.involvedInInterest, changes.involvedInCrypto,
-           req.user.id, approval.reference_id]
+           changes.itsNumber || null, req.user.id, approval.reference_id]
         );
       }
     }

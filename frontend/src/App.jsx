@@ -46,10 +46,11 @@ export default function App() {
   const dispatch = useDispatch();
 
   useEffect(() => {
-    dispatch(fetchCurrency());
     const token = localStorage.getItem('accessToken');
     if (token) {
-      dispatch(fetchMe());
+      dispatch(fetchMe()).then((result) => {
+        if (fetchMe.fulfilled.match(result)) dispatch(fetchCurrency());
+      });
     } else {
       dispatch({ type: 'auth/fetchMe/rejected' });
     }

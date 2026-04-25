@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   LayoutDashboard, Building2, Users, FileText, CreditCard, BookOpen,
-  Paperclip, CheckSquare, TrendingUp, Activity, Shield, Settings, LogOut,
+  Paperclip, CheckSquare, TrendingUp, Activity, Shield, Settings, LogOut, UserCircle,
 } from 'lucide-react';
 import { logout } from '../../store/slices/authSlice';
 import { hasRole } from '../../utils/helpers';
@@ -58,6 +58,7 @@ export default function Sidebar({ collapsed }) {
           </>
         )}
 
+        <NavItem to="/profile" icon={ic(UserCircle)} label="My Profile" collapsed={collapsed} />
         {!collapsed && <p className="px-3 pt-3 pb-1 text-xs font-semibold text-primary-400 uppercase tracking-wider">Finance</p>}
         <NavItem to="/loans" icon={ic(FileText)} label="Loan Applications" collapsed={collapsed} />
         <NavItem to="/transactions" icon={ic(CreditCard)} label="Transactions" collapsed={collapsed} />
