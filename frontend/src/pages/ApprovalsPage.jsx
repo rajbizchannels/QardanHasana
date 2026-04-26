@@ -10,41 +10,54 @@ import toast from 'react-hot-toast';
 
 const PRIORITY_COLORS = { urgent: 'badge-red', high: 'badge-yellow', normal: 'badge-blue', low: 'badge-gray' };
 
-const PROFILE_FIELD_LABELS = {
+// Human-readable labels for every profile field key
+const FIELD_LABELS = {
   firstName: 'First Name', lastName: 'Last Name', itsNumber: 'ITS Number',
-  phone: 'Phone', dateOfBirth: 'Date of Birth', gender: 'Gender',
-  addressLine1: 'Address', addressLine2: 'Address 2', city: 'City',
-  state: 'State', country: 'Country', postalCode: 'Postal Code',
-  involvedInInterest: 'Involved in Interest', involvedInCrypto: 'Involved in Crypto',
-  involvedInInsurance: 'Involved in Insurance', involvedInSubstanceAbuse: 'Substance Abuse',
-  involvedInPonzi: 'Involved in Ponzi', involvedInOtherSchemes: 'Other Schemes',
+  phone: 'Phone', dateOfBirth: 'Date of Birth', gender: 'Gender', email: 'Email',
+  addressLine1: 'Address Line 1', addressLine2: 'Address Line 2',
+  city: 'City', state: 'State', country: 'Country', postalCode: 'Postal Code',
+  involvedInInterest: 'Involved in Interest/Riba',
+  involvedInInsurance: 'Involved in Insurance',
+  involvedInSubstanceAbuse: 'Substance Abuse',
+  involvedInCrypto: 'Involved in Crypto',
+  involvedInPonzi: 'Involved in Ponzi Scheme',
+  involvedInOtherSchemes: 'Other Schemes',
+  otherSchemesDescription: 'Other Schemes Description',
 };
 
-const fmtMetaVal = (v) => {
-  if (v === true || v === 'true') return 'Yes';
-  if (v === false || v === 'false') return 'No';
-  return String(v);
+const toLabel = (key) =>
+  FIELD_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+
+const fmtVal = (v) => {
+  if (v === true || v === 'true') return <span className="text-green-700 font-semibold">Yes</span>;
+  if (v === false || v === 'false') return <span className="text-dark-500">No</span>;
+  return <span className="font-medium text-dark-800">{String(v)}</span>;
 };
 
 const MetadataPanel = ({ approval }) => {
-  if (!approval.metadata) return null;
+  // Use effective_metadata (backend COALESCE of metadata + profile_changes_pending)
+  const raw = approval.effective_metadata ?? approval.metadata;
+  if (!raw) return null;
+
   let meta;
-  try { meta = typeof approval.metadata === 'string' ? JSON.parse(approval.metadata) : approval.metadata; }
+  try { meta = typeof raw === 'string' ? JSON.parse(raw) : raw; }
   catch { return null; }
+  if (!meta || typeof meta !== 'object') return null;
 
   if (approval.reference_type === 'user_profile') {
-    const entries = Object.entries(meta).filter(([k, v]) =>
-      PROFILE_FIELD_LABELS[k] && v !== undefined && v !== null && v !== ''
+    // Show every submitted field that has a meaningful value
+    const entries = Object.entries(meta).filter(
+      ([, v]) => v !== undefined && v !== null && v !== ''
     );
     if (!entries.length) return null;
     return (
-      <div className="mt-2 bg-blue-50 border border-blue-100 rounded-lg p-2">
-        <p className="text-xs font-semibold text-blue-700 mb-1.5">Requested Changes:</p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1">
+      <div className="mt-3 bg-blue-50 border border-blue-100 rounded-lg p-3">
+        <p className="text-xs font-semibold text-blue-700 mb-2">Submitted Profile Values:</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
           {entries.map(([key, val]) => (
             <div key={key} className="flex gap-1.5 text-xs">
-              <span className="text-dark-500 flex-shrink-0">{PROFILE_FIELD_LABELS[key]}:</span>
-              <span className="font-medium text-dark-800">{fmtMetaVal(val)}</span>
+              <span className="text-dark-500 flex-shrink-0 min-w-[120px]">{toLabel(key)}:</span>
+              {fmtVal(val)}
             </div>
           ))}
         </div>
@@ -53,20 +66,16 @@ const MetadataPanel = ({ approval }) => {
   }
 
   if (approval.reference_type === 'transaction' || approval.reference_type === 'transaction_deletion') {
-    const items = [
-      meta.type && { label: 'Type', value: meta.type.replace(/_/g, ' ') },
-      meta.amount && { label: 'Amount', value: meta.amount },
-      meta.transactionNumber && { label: 'Ref #', value: meta.transactionNumber, mono: true },
-    ].filter(Boolean);
+    const items = Object.entries(meta).filter(([, v]) => v !== undefined && v !== null && v !== '');
     if (!items.length) return null;
     return (
-      <div className="mt-2 bg-amber-50 border border-amber-100 rounded-lg p-2">
-        <p className="text-xs font-semibold text-amber-700 mb-1.5">Transaction Details:</p>
-        <div className="flex flex-wrap gap-x-4 gap-y-1">
-          {items.map(({ label, value, mono }) => (
-            <span key={label} className="text-xs">
-              <span className="text-dark-500">{label}: </span>
-              <span className={`font-medium text-dark-800 ${mono ? 'font-mono' : ''}`}>{value}</span>
+      <div className="mt-3 bg-amber-50 border border-amber-100 rounded-lg p-3">
+        <p className="text-xs font-semibold text-amber-700 mb-2">Transaction Details:</p>
+        <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+          {items.map(([key, val]) => (
+            <span key={key} className="text-xs">
+              <span className="text-dark-500">{toLabel(key)}: </span>
+              <span className="font-medium text-dark-800">{String(val)}</span>
             </span>
           ))}
         </div>

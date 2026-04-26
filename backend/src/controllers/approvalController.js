@@ -22,10 +22,16 @@ exports.getApprovals = async (req, res) => {
       `SELECT a.*,
               u.first_name || ' ' || u.last_name as requested_by_name,
               u.its_number as requested_by_its,
-              ru.first_name || ' ' || ru.last_name as reviewed_by_name
+              ru.first_name || ' ' || ru.last_name as reviewed_by_name,
+              CASE
+                WHEN a.metadata IS NOT NULL THEN a.metadata
+                WHEN a.reference_type = 'user_profile' THEN ref_u.profile_changes_pending
+                ELSE NULL
+              END as effective_metadata
        FROM approvals a
        JOIN users u ON a.requested_by = u.id
        LEFT JOIN users ru ON a.reviewed_by = ru.id
+       LEFT JOIN users ref_u ON a.reference_type = 'user_profile' AND ref_u.id = a.reference_id
        WHERE ${whereClause}
        ORDER BY CASE a.priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'normal' THEN 3 ELSE 4 END,
                 a.created_at DESC
