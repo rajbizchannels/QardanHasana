@@ -194,10 +194,11 @@ exports.updateUser = async (req, res) => {
       );
 
       const approvalRes = await query(
-        `INSERT INTO approvals (reference_type, reference_id, title, description, requested_by, priority)
-         VALUES ('user_profile', $1, $2, $3, $4, 'normal') RETURNING id`,
+        `INSERT INTO approvals (reference_type, reference_id, title, description, requested_by, priority, metadata)
+         VALUES ('user_profile', $1, $2, $3, $4, 'normal', $5) RETURNING id`,
         [id, `Profile Update Request - ${current.first_name} ${current.last_name}`,
-         `User ${current.its_number} has requested profile changes`, id]
+         `User ${current.its_number} has requested profile changes`, id,
+         JSON.stringify(changes)]
       );
 
       const admins = await query(`SELECT u.email, u.first_name FROM users u JOIN user_roles ur ON u.id = ur.user_id JOIN roles r ON ur.role_id = r.id WHERE r.name IN ('admin', 'accountant')`);

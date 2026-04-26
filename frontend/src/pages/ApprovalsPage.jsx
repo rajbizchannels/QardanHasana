@@ -11,9 +11,19 @@ import toast from 'react-hot-toast';
 const PRIORITY_COLORS = { urgent: 'badge-red', high: 'badge-yellow', normal: 'badge-blue', low: 'badge-gray' };
 
 const PROFILE_FIELD_LABELS = {
-  firstName: 'First Name', lastName: 'Last Name', phone: 'Phone',
-  addressLine1: 'Address', city: 'City', itsNumber: 'ITS Number',
+  firstName: 'First Name', lastName: 'Last Name', itsNumber: 'ITS Number',
+  phone: 'Phone', dateOfBirth: 'Date of Birth', gender: 'Gender',
+  addressLine1: 'Address', addressLine2: 'Address 2', city: 'City',
+  state: 'State', country: 'Country', postalCode: 'Postal Code',
   involvedInInterest: 'Involved in Interest', involvedInCrypto: 'Involved in Crypto',
+  involvedInInsurance: 'Involved in Insurance', involvedInSubstanceAbuse: 'Substance Abuse',
+  involvedInPonzi: 'Involved in Ponzi', involvedInOtherSchemes: 'Other Schemes',
+};
+
+const fmtMetaVal = (v) => {
+  if (v === true || v === 'true') return 'Yes';
+  if (v === false || v === 'false') return 'No';
+  return String(v);
 };
 
 const MetadataPanel = ({ approval }) => {
@@ -23,7 +33,9 @@ const MetadataPanel = ({ approval }) => {
   catch { return null; }
 
   if (approval.reference_type === 'user_profile') {
-    const entries = Object.entries(meta).filter(([k, v]) => PROFILE_FIELD_LABELS[k] && v !== undefined && v !== null && v !== '');
+    const entries = Object.entries(meta).filter(([k, v]) =>
+      PROFILE_FIELD_LABELS[k] && v !== undefined && v !== null && v !== ''
+    );
     if (!entries.length) return null;
     return (
       <div className="mt-2 bg-blue-50 border border-blue-100 rounded-lg p-2">
@@ -32,7 +44,7 @@ const MetadataPanel = ({ approval }) => {
           {entries.map(([key, val]) => (
             <div key={key} className="flex gap-1.5 text-xs">
               <span className="text-dark-500 flex-shrink-0">{PROFILE_FIELD_LABELS[key]}:</span>
-              <span className="font-medium text-dark-800">{String(val)}</span>
+              <span className="font-medium text-dark-800">{fmtMetaVal(val)}</span>
             </div>
           ))}
         </div>
