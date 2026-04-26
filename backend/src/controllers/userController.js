@@ -245,7 +245,7 @@ exports.updateUser = async (req, res) => {
         profile_change_approved_by = $21,
         updated_at = NOW()
        WHERE id = $22 RETURNING *`,
-      [itsNumber || null, firstName, lastName, phone, dateOfBirth, gender,
+      [itsNumber || null, firstName, lastName, phone, dateOfBirth || null, gender,
        addressLine1, addressLine2, city, state, country, postalCode,
        involvedInInterest, involvedInInsurance, involvedInSubstanceAbuse,
        involvedInCrypto, involvedInPonzi, involvedInOtherSchemes, otherSchemesDescription,

@@ -26,12 +26,23 @@ exports.getApprovals = async (req, res) => {
               CASE
                 WHEN a.metadata IS NOT NULL THEN a.metadata
                 WHEN a.reference_type = 'user_profile' THEN ref_u.profile_changes_pending
+                WHEN a.reference_type IN ('transaction', 'transaction_deletion') THEN
+                  jsonb_build_object(
+                    'transactionNumber', ref_t.transaction_number,
+                    'type', ref_t.type,
+                    'amount', ref_t.amount,
+                    'currency', ref_t.currency,
+                    'description', ref_t.description,
+                    'bankReference', ref_t.bank_reference,
+                    'status', ref_t.status
+                  )
                 ELSE NULL
               END as effective_metadata
        FROM approvals a
        JOIN users u ON a.requested_by = u.id
        LEFT JOIN users ru ON a.reviewed_by = ru.id
        LEFT JOIN users ref_u ON a.reference_type = 'user_profile' AND ref_u.id = a.reference_id
+       LEFT JOIN transactions ref_t ON a.reference_type IN ('transaction', 'transaction_deletion') AND ref_t.id = a.reference_id
        WHERE ${whereClause}
        ORDER BY CASE a.priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'normal' THEN 3 ELSE 4 END,
                 a.created_at DESC
@@ -84,19 +95,40 @@ exports.reviewApproval = async (req, res) => {
             first_name = COALESCE($1, first_name),
             last_name = COALESCE($2, last_name),
             phone = COALESCE($3, phone),
-            address_line1 = COALESCE($4, address_line1),
-            city = COALESCE($5, city),
-            involved_in_interest = COALESCE($6, involved_in_interest),
-            involved_in_crypto = COALESCE($7, involved_in_crypto),
-            its_number = COALESCE($8, its_number),
+            date_of_birth = COALESCE($4, date_of_birth),
+            gender = COALESCE($5, gender),
+            address_line1 = COALESCE($6, address_line1),
+            address_line2 = COALESCE($7, address_line2),
+            city = COALESCE($8, city),
+            state = COALESCE($9, state),
+            country = COALESCE($10, country),
+            postal_code = COALESCE($11, postal_code),
+            involved_in_interest = COALESCE($12, involved_in_interest),
+            involved_in_insurance = COALESCE($13, involved_in_insurance),
+            involved_in_substance_abuse = COALESCE($14, involved_in_substance_abuse),
+            involved_in_crypto = COALESCE($15, involved_in_crypto),
+            involved_in_ponzi = COALESCE($16, involved_in_ponzi),
+            involved_in_other_schemes = COALESCE($17, involved_in_other_schemes),
+            other_schemes_description = COALESCE($18, other_schemes_description),
+            its_number = COALESCE($19, its_number),
             profile_changes_pending = NULL,
             profile_change_approved_at = NOW(),
-            profile_change_approved_by = $9,
+            profile_change_approved_by = $20,
             updated_at = NOW()
-           WHERE id = $10`,
-          [changes.firstName, changes.lastName, changes.phone, changes.addressLine1,
-           changes.city, changes.involvedInInterest, changes.involvedInCrypto,
-           changes.itsNumber || null, req.user.id, approval.reference_id]
+           WHERE id = $21`,
+          [
+            changes.firstName || null, changes.lastName || null, changes.phone || null,
+            changes.dateOfBirth || null, changes.gender || null,
+            changes.addressLine1 || null, changes.addressLine2 || null,
+            changes.city || null, changes.state || null,
+            changes.country || null, changes.postalCode || null,
+            changes.involvedInInterest ?? null, changes.involvedInInsurance ?? null,
+            changes.involvedInSubstanceAbuse ?? null, changes.involvedInCrypto ?? null,
+            changes.involvedInPonzi ?? null, changes.involvedInOtherSchemes ?? null,
+            changes.otherSchemesDescription || null,
+            changes.itsNumber || null,
+            req.user.id, approval.reference_id,
+          ]
         );
       }
     }

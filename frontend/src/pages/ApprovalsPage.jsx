@@ -10,32 +10,35 @@ import toast from 'react-hot-toast';
 
 const PRIORITY_COLORS = { urgent: 'badge-red', high: 'badge-yellow', normal: 'badge-blue', low: 'badge-gray' };
 
-// Human-readable labels for every profile field key
+// Human-readable labels for profile and transaction fields
 const FIELD_LABELS = {
+  // Profile fields
   firstName: 'First Name', lastName: 'Last Name', itsNumber: 'ITS Number',
   phone: 'Phone', dateOfBirth: 'Date of Birth', gender: 'Gender', email: 'Email',
   addressLine1: 'Address Line 1', addressLine2: 'Address Line 2',
   city: 'City', state: 'State', country: 'Country', postalCode: 'Postal Code',
-  involvedInInterest: 'Involved in Interest/Riba',
-  involvedInInsurance: 'Involved in Insurance',
-  involvedInSubstanceAbuse: 'Substance Abuse',
-  involvedInCrypto: 'Involved in Crypto',
-  involvedInPonzi: 'Involved in Ponzi Scheme',
-  involvedInOtherSchemes: 'Other Schemes',
+  involvedInInterest: 'Involved in Interest/Riba', involvedInInsurance: 'Involved in Insurance',
+  involvedInSubstanceAbuse: 'Substance Abuse', involvedInCrypto: 'Involved in Crypto',
+  involvedInPonzi: 'Involved in Ponzi Scheme', involvedInOtherSchemes: 'Other Schemes',
   otherSchemesDescription: 'Other Schemes Description',
+  // Transaction fields
+  transactionNumber: 'Ref #', type: 'Type', amount: 'Amount', currency: 'Currency',
+  description: 'Description', bankReference: 'Bank Reference', notes: 'Notes',
+  loanId: 'Loan ID', status: 'Status',
 };
 
 const toLabel = (key) =>
   FIELD_LABELS[key] || key.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
 
-const fmtVal = (v) => {
+const fmtVal = (v, key) => {
   if (v === true || v === 'true') return <span className="text-green-700 font-semibold">Yes</span>;
   if (v === false || v === 'false') return <span className="text-dark-500">No</span>;
+  if (key === 'type') return <span className="font-medium text-dark-800">{String(v).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>;
+  if (key === 'transactionNumber') return <span className="font-mono font-semibold text-dark-800">{String(v)}</span>;
   return <span className="font-medium text-dark-800">{String(v)}</span>;
 };
 
 const MetadataPanel = ({ approval }) => {
-  // Use effective_metadata (backend COALESCE of metadata + profile_changes_pending)
   const raw = approval.effective_metadata ?? approval.metadata;
   if (!raw) return null;
 
@@ -45,10 +48,7 @@ const MetadataPanel = ({ approval }) => {
   if (!meta || typeof meta !== 'object') return null;
 
   if (approval.reference_type === 'user_profile') {
-    // Show every submitted field that has a meaningful value
-    const entries = Object.entries(meta).filter(
-      ([, v]) => v !== undefined && v !== null && v !== ''
-    );
+    const entries = Object.entries(meta).filter(([, v]) => v !== undefined && v !== null && v !== '');
     if (!entries.length) return null;
     return (
       <div className="mt-3 bg-blue-50 border border-blue-100 rounded-lg p-3">
@@ -56,8 +56,8 @@ const MetadataPanel = ({ approval }) => {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
           {entries.map(([key, val]) => (
             <div key={key} className="flex gap-1.5 text-xs">
-              <span className="text-dark-500 flex-shrink-0 min-w-[120px]">{toLabel(key)}:</span>
-              {fmtVal(val)}
+              <span className="text-dark-500 flex-shrink-0 min-w-[130px]">{toLabel(key)}:</span>
+              {fmtVal(val, key)}
             </div>
           ))}
         </div>
@@ -66,17 +66,22 @@ const MetadataPanel = ({ approval }) => {
   }
 
   if (approval.reference_type === 'transaction' || approval.reference_type === 'transaction_deletion') {
-    const items = Object.entries(meta).filter(([, v]) => v !== undefined && v !== null && v !== '');
-    if (!items.length) return null;
+    // Ordered display: key fields first
+    const ORDER = ['transactionNumber', 'type', 'amount', 'currency', 'description', 'bankReference', 'status', 'notes'];
+    const entries = [
+      ...ORDER.filter(k => meta[k] !== undefined && meta[k] !== null && meta[k] !== '').map(k => [k, meta[k]]),
+      ...Object.entries(meta).filter(([k, v]) => !ORDER.includes(k) && v !== undefined && v !== null && v !== ''),
+    ];
+    if (!entries.length) return null;
     return (
       <div className="mt-3 bg-amber-50 border border-amber-100 rounded-lg p-3">
         <p className="text-xs font-semibold text-amber-700 mb-2">Transaction Details:</p>
-        <div className="flex flex-wrap gap-x-4 gap-y-1.5">
-          {items.map(([key, val]) => (
-            <span key={key} className="text-xs">
-              <span className="text-dark-500">{toLabel(key)}: </span>
-              <span className="font-medium text-dark-800">{String(val)}</span>
-            </span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-1.5">
+          {entries.map(([key, val]) => (
+            <div key={key} className="flex gap-1.5 text-xs">
+              <span className="text-dark-500 flex-shrink-0 min-w-[110px]">{toLabel(key)}:</span>
+              {fmtVal(val, key)}
+            </div>
           ))}
         </div>
       </div>

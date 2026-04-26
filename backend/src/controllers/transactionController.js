@@ -125,9 +125,10 @@ exports.createTransaction = async (req, res) => {
       await postToLedger(txn, req.user.id);
     } else {
       await query(
-        `INSERT INTO approvals (reference_type, reference_id, title, description, requested_by, priority)
-         VALUES ('transaction', $1, $2, $3, $4, 'normal')`,
-        [txn.id, `Transaction ${txnNumber}`, `New ${type} transaction for ${currency} ${amount}`, req.user.id]
+        `INSERT INTO approvals (reference_type, reference_id, title, description, requested_by, priority, metadata)
+         VALUES ('transaction', $1, $2, $3, $4, 'normal', $5)`,
+        [txn.id, `Transaction ${txnNumber}`, `New ${type} transaction for ${currency} ${amount}`, req.user.id,
+         JSON.stringify({ type, amount, currency, transactionNumber: txnNumber, description, bankReference: bankReference || null, notes: notes || null, loanId: loanId || null })]
       );
 
       const admins = await query(`SELECT u.email FROM users u JOIN user_roles ur ON u.id = ur.user_id JOIN roles r ON ur.role_id = r.id WHERE r.name IN ('admin', 'accountant')`);
@@ -231,10 +232,12 @@ exports.deleteTransaction = async (req, res) => {
       [req.user.id, id]
     );
 
+    const txn = txnRes.rows[0];
     await query(
-      `INSERT INTO approvals (reference_type, reference_id, title, description, requested_by, priority)
-       VALUES ('transaction_deletion', $1, $2, $3, $4, 'normal')`,
-      [id, `Delete Transaction ${txnRes.rows[0].transaction_number}`, `Deletion requested`, req.user.id]
+      `INSERT INTO approvals (reference_type, reference_id, title, description, requested_by, priority, metadata)
+       VALUES ('transaction_deletion', $1, $2, $3, $4, 'normal', $5)`,
+      [id, `Delete Transaction ${txn.transaction_number}`, `Deletion of ${txn.type} for ${txn.amount}`, req.user.id,
+       JSON.stringify({ transactionNumber: txn.transaction_number, type: txn.type, amount: txn.amount, currency: txn.currency, description: txn.description })]
     );
 
     res.json({ success: true, message: 'Deletion request submitted for approval' });
