@@ -71,6 +71,31 @@ if (!fs.existsSync(logsDir)) fs.mkdirSync(logsDir, { recursive: true });
 // API routes
 app.use('/api', routes);
 
+// Run migrations on startup
+const { query: dbQuery } = require('./config/database');
+(async () => {
+  const migrations = [
+    `ALTER TABLE creditor_profiles ADD COLUMN IF NOT EXISTS deposit_maturity_date DATE`,
+    `CREATE TABLE IF NOT EXISTS creditor_deposits (
+      id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+      creditor_id UUID NOT NULL REFERENCES creditor_profiles(id) ON DELETE CASCADE,
+      amount NUMERIC(15,2) NOT NULL,
+      deposit_date DATE NOT NULL DEFAULT CURRENT_DATE,
+      maturity_date DATE NOT NULL,
+      status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'matured', 'returned')),
+      notes TEXT,
+      created_by UUID REFERENCES users(id),
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    )`,
+    `CREATE INDEX IF NOT EXISTS idx_creditor_deposits_creditor ON creditor_deposits(creditor_id)`,
+    `CREATE INDEX IF NOT EXISTS idx_creditor_deposits_maturity ON creditor_deposits(maturity_date) WHERE status = 'active'`,
+  ];
+  for (const sql of migrations) {
+    try { await dbQuery(sql); } catch (e) { console.warn('Migration warning:', e.message); }
+  }
+})();
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'OK', timestamp: new Date().toISOString(), version: '1.0.0' });

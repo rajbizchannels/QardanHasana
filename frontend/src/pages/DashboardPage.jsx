@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import {
   Wallet, Send, FileText, AlertTriangle, FolderOpen, Clock,
-  CheckCircle, Users, BookOpen,
+  CheckCircle, Users, BookOpen, CalendarClock,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import api from '../utils/api';
@@ -34,6 +34,7 @@ export default function DashboardPage() {
   const [myLoans, setMyLoans] = useState([]);
   const [myLedger, setMyLedger] = useState(null);
   const [approvalStats, setApprovalStats] = useState(null);
+  const [maturityAlerts, setMaturityAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,12 +51,14 @@ export default function DashboardPage() {
       if (isAdmin) {
         promises.push(api.get('/reports/cash-status').catch(() => null));
         promises.push(api.get('/approvals/stats').catch(() => null));
+        promises.push(api.get('/profiles/maturity-alerts').catch(() => null));
       }
-      const [ledgerRes, loansRes, reportRes, appRes] = await Promise.all(promises);
+      const [ledgerRes, loansRes, reportRes, appRes, maturityRes] = await Promise.all(promises);
       setMyLedger(ledgerRes?.data?.data || null);
       setMyLoans(loansRes?.data?.data?.loans || []);
       if (reportRes) setData(reportRes.data.data);
       if (appRes) setApprovalStats(appRes.data.data);
+      if (maturityRes) setMaturityAlerts(maturityRes.data.data || []);
     } finally {
       setLoading(false);
     }
@@ -119,6 +122,38 @@ export default function DashboardPage() {
           <StatCard title="Pending Approvals" value={approvalStats?.pending || 0} icon={<Clock className="w-8 h-8" />} link="/approvals" color={parseInt(approvalStats?.pending) > 5 ? 'red' : 'primary'} />
           <StatCard title="Total Repaid" value={fmt(data?.summary?.totalRepaid)} icon={<CheckCircle className="w-8 h-8" />} link="/reports" color="green" />
           <StatCard title="Total Users" value="8+" icon={<Users className="w-8 h-8" />} link="/users" />
+        </div>
+      )}
+
+      {isAdmin && maturityAlerts.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-3">
+            <CalendarClock className="w-5 h-5 text-amber-600" />
+            <h3 className="font-semibold text-amber-800">Creditor Deposit Maturities</h3>
+            <span className="badge badge-yellow ml-auto">{maturityAlerts.length} alert(s)</span>
+          </div>
+          <div className="space-y-2">
+            {maturityAlerts.slice(0, 5).map((a) => {
+              const days = parseInt(a.days_until_maturity);
+              return (
+                <div key={a.id} className="flex items-center justify-between bg-white rounded-lg px-3 py-2 border border-amber-100">
+                  <div>
+                    <p className="text-sm font-medium text-dark-800">{a.creditor_name} <span className="text-dark-400 font-mono text-xs">({a.creditor_number})</span></p>
+                    <p className="text-xs text-dark-500">{a.its_number} · Deposit: {fmt(a.amount)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className={`text-sm font-semibold ${days < 0 ? 'text-red-700' : days <= 7 ? 'text-amber-700' : 'text-dark-600'}`}>
+                      {days < 0 ? `${Math.abs(days)}d overdue` : days === 0 ? 'Due today' : `${days} days`}
+                    </p>
+                    <p className="text-xs text-dark-400">{new Date(a.maturity_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                  </div>
+                </div>
+              );
+            })}
+            {maturityAlerts.length > 5 && (
+              <Link to="/accounts" className="text-xs text-primary-800 hover:underline block text-center">+{maturityAlerts.length - 5} more — view all in Accounts</Link>
+            )}
+          </div>
         </div>
       )}
 

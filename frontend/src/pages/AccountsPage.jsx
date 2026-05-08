@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { FileText, Building2, Users } from 'lucide-react';
+import { useSelector } from 'react-redux';
+import { FileText, Building2, Users, AlertTriangle } from 'lucide-react';
 import api from '../utils/api';
-import { formatDate } from '../utils/helpers';
+import { formatDate, hasRole } from '../utils/helpers';
 import { useCurrency } from '../utils/currency';
 import StatusBadge from '../components/common/StatusBadge';
 import Pagination from '../components/common/Pagination';
@@ -11,10 +12,13 @@ import toast from 'react-hot-toast';
 
 export default function AccountsPage() {
   const fmt = useCurrency();
+  const { user: authUser } = useSelector((s) => s.auth);
+  const isAccountant = hasRole(authUser, 'admin', 'accountant');
   const [tab, setTab] = useState('debtors');
   const [data, setData] = useState({ creditors: [], debtors: [], guarantors: [] });
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
+  const [maturityAlerts, setMaturityAlerts] = useState([]);
 
   useEffect(() => { fetchProfiles(); }, [tab, page]);
 
@@ -23,6 +27,10 @@ export default function AccountsPage() {
     try {
       const res = await api.get(`/profiles?type=${tab}&page=${page}&limit=20`);
       setData(prev => ({ ...prev, [tab]: res.data.data[tab] || [] }));
+      if (isAccountant) {
+        const alertRes = await api.get('/profiles/maturity-alerts').catch(() => null);
+        setMaturityAlerts(alertRes?.data?.data || []);
+      }
     } catch { toast.error('Failed to load profiles'); }
     finally { setLoading(false); }
   };
@@ -52,6 +60,21 @@ export default function AccountsPage() {
           </button>
         ))}
       </div>
+
+      {maturityAlerts.length > 0 && tab === 'creditors' && (
+        <div className="mb-4 bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
+          <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-semibold text-amber-800">
+              {maturityAlerts.filter(a => parseInt(a.days_until_maturity) < 0).length > 0
+                ? `${maturityAlerts.filter(a => parseInt(a.days_until_maturity) < 0).length} overdue repayment(s) — `
+                : ''}
+              {maturityAlerts.length} creditor deposit maturity alert(s)
+            </p>
+            <p className="text-xs text-amber-700 mt-0.5">Deposits approaching or past their return date. See Maturity Date column below.</p>
+          </div>
+        </div>
+      )}
 
       <div className="card">
         {loading ? <div className="flex justify-center py-12"><LoadingSpinner /></div> : (
@@ -90,7 +113,7 @@ export default function AccountsPage() {
 
               {tab === 'creditors' && (
                 <>
-                  <thead><tr><th>Name</th><th>ITS</th><th>Creditor #</th><th>Credit Limit</th><th>Total Given</th><th>Recovered</th><th>Outstanding</th><th>Status</th><th>Actions</th></tr></thead>
+                  <thead><tr><th>Name</th><th>ITS</th><th>Creditor #</th><th>Credit Limit</th><th>Total Given</th><th>Recovered</th><th>Outstanding</th><th>Deposits</th><th>Status</th><th>Actions</th></tr></thead>
                   <tbody>
                     {currentData.map((c) => (
                       <tr key={c.id}>
@@ -101,11 +124,25 @@ export default function AccountsPage() {
                         <td>{fmt(c.total_given)}</td>
                         <td className="text-green-700">{fmt(c.total_recovered)}</td>
                         <td className="font-semibold text-orange-700">{fmt(c.outstanding_amount)}</td>
+                        <td>
+                          {parseInt(c.active_deposit_count) > 0 ? (
+                            <div className="space-y-0.5">
+                              <span className="text-xs text-dark-600 font-medium">{c.active_deposit_count} active</span>
+                              {parseInt(c.overdue_deposits) > 0 && (
+                                <div><span className="badge badge-red text-xs">{c.overdue_deposits} overdue</span></div>
+                              )}
+                              {c.next_maturity_date && parseInt(c.overdue_deposits) === 0 && (() => {
+                                const days = Math.ceil((new Date(c.next_maturity_date) - new Date()) / 86400000);
+                                return <div><span className={`text-xs ${days <= 7 ? 'text-amber-700 font-medium' : 'text-dark-400'}`}>Next: {new Date(c.next_maturity_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</span></div>;
+                              })()}
+                            </div>
+                          ) : <span className="text-dark-300 text-xs">—</span>}
+                        </td>
                         <td><StatusBadge status={c.status} /></td>
                         <td><Link to={`/users/${c.user_id}`} className="text-primary-800 hover:underline text-sm">Profile</Link></td>
                       </tr>
                     ))}
-                    {currentData.length === 0 && <tr><td colSpan={9} className="text-center py-8 text-dark-400">No creditors found</td></tr>}
+                    {currentData.length === 0 && <tr><td colSpan={10} className="text-center py-8 text-dark-400">No creditors found</td></tr>}
                   </tbody>
                 </>
               )}

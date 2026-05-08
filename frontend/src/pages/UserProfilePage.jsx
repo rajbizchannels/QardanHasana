@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { User, FileText, Building2, Users, Lock } from 'lucide-react';
+import { User, FileText, Building2, Users, Lock, CalendarClock, Plus, Pencil, Trash2 } from 'lucide-react';
 import api from '../utils/api';
 import { hasRole, formatDate } from '../utils/helpers';
 import { useCurrency } from '../utils/currency';
@@ -17,6 +17,167 @@ const TABS = [
   { key: 'creditor', label: 'Creditor', icon: <Building2 className="w-4 h-4" /> },
   { key: 'guarantor', label: 'Guarantor', icon: <Users className="w-4 h-4" /> },
 ];
+
+const EMPTY_DEPOSIT = { amount: '', depositDate: '', maturityDate: '', notes: '' };
+
+function DepositsList({ creditorId, fmt }) {
+  const [deposits, setDeposits] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showModal, setShowModal] = useState(false);
+  const [editingDeposit, setEditingDeposit] = useState(null);
+  const [form, setForm] = useState(EMPTY_DEPOSIT);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => { fetchDeposits(); }, [creditorId]);
+
+  const fetchDeposits = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get(`/profiles/creditor/${creditorId}/deposits`);
+      setDeposits(res.data.data);
+    } catch { toast.error('Failed to load deposits'); }
+    finally { setLoading(false); }
+  };
+
+  const openAdd = () => { setEditingDeposit(null); setForm(EMPTY_DEPOSIT); setShowModal(true); };
+  const openEdit = (d) => {
+    setEditingDeposit(d);
+    setForm({
+      amount: d.amount,
+      depositDate: d.deposit_date ? d.deposit_date.split('T')[0] : '',
+      maturityDate: d.maturity_date ? d.maturity_date.split('T')[0] : '',
+      notes: d.notes || '',
+    });
+    setShowModal(true);
+  };
+
+  const handleSave = async () => {
+    if (!form.amount || !form.maturityDate) { toast.error('Amount and maturity date are required'); return; }
+    setSaving(true);
+    try {
+      if (editingDeposit) {
+        await api.put(`/profiles/deposits/${editingDeposit.id}`, form);
+        toast.success('Deposit updated');
+      } else {
+        await api.post(`/profiles/creditor/${creditorId}/deposits`, form);
+        toast.success('Deposit recorded');
+      }
+      setShowModal(false);
+      fetchDeposits();
+    } catch { toast.error('Failed to save deposit'); }
+    finally { setSaving(false); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Delete this deposit record?')) return;
+    try {
+      await api.delete(`/profiles/deposits/${id}`);
+      toast.success('Deposit deleted');
+      fetchDeposits();
+    } catch { toast.error('Failed to delete deposit'); }
+  };
+
+  const handleStatusChange = async (id, status) => {
+    try {
+      await api.put(`/profiles/deposits/${id}`, { status });
+      fetchDeposits();
+    } catch { toast.error('Failed to update status'); }
+  };
+
+  const today = new Date();
+  const daysUntil = (d) => Math.ceil((new Date(d.maturity_date) - today) / 86400000);
+
+  if (loading) return <div className="flex justify-center py-6"><LoadingSpinner /></div>;
+
+  return (
+    <div className="border border-dark-100 rounded-xl p-4">
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <CalendarClock className="w-4 h-4 text-dark-500" />
+          <p className="font-semibold text-sm text-dark-800">Deposits &amp; Maturity Dates</p>
+        </div>
+        <button onClick={openAdd} className="btn-primary btn-sm flex items-center gap-1 text-xs">
+          <Plus className="w-3.5 h-3.5" /> Add Deposit
+        </button>
+      </div>
+
+      {deposits.length === 0 ? (
+        <p className="text-dark-400 text-sm italic py-4 text-center">No deposits recorded</p>
+      ) : (
+        <div className="space-y-2">
+          {deposits.map((d) => {
+            const days = daysUntil(d);
+            const isOverdue = d.status === 'active' && days < 0;
+            const isDueSoon = d.status === 'active' && days >= 0 && days <= 7;
+            return (
+              <div key={d.id} className={`flex items-start justify-between rounded-lg px-3 py-2.5 text-sm ${isOverdue ? 'bg-red-50 border border-red-200' : isDueSoon ? 'bg-amber-50 border border-amber-200' : 'bg-dark-50 border border-dark-100'}`}>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-semibold text-dark-900">{fmt(d.amount)}</span>
+                    {d.status === 'active' && isOverdue && <span className="badge badge-red text-xs">Overdue {Math.abs(days)}d</span>}
+                    {d.status === 'active' && isDueSoon && <span className="badge badge-yellow text-xs">Due in {days}d</span>}
+                    {d.status === 'returned' && <span className="badge badge-green text-xs">Returned</span>}
+                    {d.status === 'matured' && <span className="badge badge-blue text-xs">Matured</span>}
+                  </div>
+                  <div className="text-xs text-dark-500 mt-0.5">
+                    Deposited: {d.deposit_date ? new Date(d.deposit_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
+                    &nbsp;·&nbsp;
+                    Matures: <span className={`font-medium ${isOverdue ? 'text-red-700' : isDueSoon ? 'text-amber-700' : 'text-dark-700'}`}>
+                      {new Date(d.maturity_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </span>
+                  </div>
+                  {d.notes && <p className="text-xs text-dark-400 mt-0.5 italic">{d.notes}</p>}
+                </div>
+                <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                  {d.status === 'active' && (
+                    <button onClick={() => handleStatusChange(d.id, 'returned')} className="text-xs text-green-700 hover:underline px-1">Mark Returned</button>
+                  )}
+                  <button onClick={() => openEdit(d)} className="p-1 text-dark-400 hover:text-dark-700"><Pencil className="w-3.5 h-3.5" /></button>
+                  <button onClick={() => handleDelete(d.id)} className="p-1 text-dark-400 hover:text-red-600"><Trash2 className="w-3.5 h-3.5" /></button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      <Modal isOpen={showModal} onClose={() => setShowModal(false)}
+        title={editingDeposit ? 'Edit Deposit' : 'Record New Deposit'}
+        footer={
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setShowModal(false)} className="btn-outline">Cancel</button>
+            <button onClick={handleSave} disabled={saving} className="btn-primary">{saving ? 'Saving…' : 'Save'}</button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <div>
+            <label className="input-label">Amount *</label>
+            <input type="number" step="0.01" className="input-field" value={form.amount}
+              onChange={(e) => setForm({ ...form, amount: e.target.value })} placeholder="0.00" />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="input-label">Deposit Date</label>
+              <input type="date" className="input-field" value={form.depositDate}
+                onChange={(e) => setForm({ ...form, depositDate: e.target.value })} />
+            </div>
+            <div>
+              <label className="input-label">Maturity Date *</label>
+              <input type="date" className="input-field" value={form.maturityDate}
+                onChange={(e) => setForm({ ...form, maturityDate: e.target.value })} />
+            </div>
+          </div>
+          <div>
+            <label className="input-label">Notes</label>
+            <textarea className="input-field" rows={2} value={form.notes}
+              onChange={(e) => setForm({ ...form, notes: e.target.value })} placeholder="Optional notes…" />
+          </div>
+        </div>
+      </Modal>
+    </div>
+  );
+}
 
 export default function UserProfilePage({ isSelf, isNew }) {
   const { id } = useParams();
@@ -318,12 +479,17 @@ export default function UserProfilePage({ isSelf, isNew }) {
       {tab === 'creditor' && (
         <div className="card">
           {user?.creditor_id ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-              <div><p className="text-xs text-dark-400">Creditor Number</p><p className="font-semibold">{user.creditor_number}</p></div>
-              <div><p className="text-xs text-dark-400">Total Given</p><p className="font-semibold">{fmt(user.total_given)}</p></div>
-              <div><p className="text-xs text-dark-400">Total Recovered</p><p className="font-semibold text-green-700">{fmt(user.total_recovered)}</p></div>
-              <div><p className="text-xs text-dark-400">Outstanding</p><p className="font-semibold text-orange-700">{fmt(user.creditor_outstanding)}</p></div>
-              <div><p className="text-xs text-dark-400">Status</p><StatusBadge status={user.creditor_status} /></div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                <div><p className="text-xs text-dark-400">Creditor Number</p><p className="font-semibold">{user.creditor_number}</p></div>
+                <div><p className="text-xs text-dark-400">Total Given</p><p className="font-semibold">{fmt(user.total_given)}</p></div>
+                <div><p className="text-xs text-dark-400">Total Recovered</p><p className="font-semibold text-green-700">{fmt(user.total_recovered)}</p></div>
+                <div><p className="text-xs text-dark-400">Outstanding</p><p className="font-semibold text-orange-700">{fmt(user.creditor_outstanding)}</p></div>
+                <div><p className="text-xs text-dark-400">Status</p><StatusBadge status={user.creditor_status} /></div>
+              </div>
+              {isAccountant && (
+                <DepositsList creditorId={user.creditor_id} fmt={fmt} />
+              )}
             </div>
           ) : (
             <div className="text-center py-10">

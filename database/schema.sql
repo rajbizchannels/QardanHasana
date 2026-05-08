@@ -129,6 +129,22 @@ CREATE TABLE IF NOT EXISTS creditor_profiles (
 );
 
 -- ============================================================
+-- CREDITOR DEPOSITS (per-deposit maturity tracking)
+-- ============================================================
+CREATE TABLE IF NOT EXISTS creditor_deposits (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    creditor_id UUID NOT NULL REFERENCES creditor_profiles(id) ON DELETE CASCADE,
+    amount NUMERIC(15,2) NOT NULL,
+    deposit_date DATE NOT NULL DEFAULT CURRENT_DATE,
+    maturity_date DATE NOT NULL,
+    status VARCHAR(20) DEFAULT 'active' CHECK (status IN ('active', 'matured', 'returned')),
+    notes TEXT,
+    created_by UUID REFERENCES users(id),
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- ============================================================
 -- DEBTOR PROFILES
 -- ============================================================
 CREATE TABLE IF NOT EXISTS debtor_profiles (
@@ -433,3 +449,6 @@ CREATE TRIGGER update_loan_guarantors_updated_at BEFORE UPDATE ON loan_guarantor
 CREATE TRIGGER update_transactions_updated_at BEFORE UPDATE ON transactions FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_approvals_updated_at BEFORE UPDATE ON approvals FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 CREATE TRIGGER update_documents_updated_at BEFORE UPDATE ON documents FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Creditor deposit maturity
+ALTER TABLE creditor_profiles ADD COLUMN IF NOT EXISTS deposit_maturity_date DATE;
