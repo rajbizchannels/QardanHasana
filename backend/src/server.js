@@ -92,6 +92,9 @@ const { query: dbQuery } = require('./config/database');
     `CREATE INDEX IF NOT EXISTS idx_creditor_deposits_maturity ON creditor_deposits(maturity_date) WHERE status = 'active'`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp VARCHAR(20)`,
     `ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_preferences JSONB DEFAULT '{}'::jsonb`,
+    `ALTER TABLE creditor_profiles ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`,
+    `ALTER TABLE debtor_profiles ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`,
+    `ALTER TABLE guarantor_profiles ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`,
   ];
   for (const sql of migrations) {
     try { await dbQuery(sql); } catch (e) { console.warn('Migration warning:', e.message); }

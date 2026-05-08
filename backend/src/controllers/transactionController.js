@@ -167,8 +167,8 @@ exports.updateTransaction = async (req, res) => {
     if (!txnRes.rows[0]) return res.status(404).json({ success: false, message: 'Transaction not found' });
 
     const txn = txnRes.rows[0];
-    if (txn.status !== 'pending') {
-      return res.status(400).json({ success: false, message: 'Only pending transactions can be edited' });
+    if (['cancelled', 'rejected'].includes(txn.status)) {
+      return res.status(400).json({ success: false, message: 'Cancelled or rejected transactions cannot be edited' });
     }
 
     await query(
@@ -200,6 +200,14 @@ exports.updateTransaction = async (req, res) => {
        LEFT JOIN users tu ON t.to_account_id = tu.id
        WHERE t.id = $1`, [id]
     );
+
+    // Re-post to ledger if already approved/completed so entries reflect updated from/to/amount
+    if (['approved', 'completed'].includes(updated.rows[0].status)) {
+      await query(`DELETE FROM ledger_entries WHERE transaction_id = $1`, [id]);
+      await query(`UPDATE transactions SET status = 'approved', updated_at = NOW() WHERE id = $1`, [id]);
+      await postToLedger(updated.rows[0], req.user.id);
+    }
+
     res.json({ success: true, data: updated.rows[0] });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });

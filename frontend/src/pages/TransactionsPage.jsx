@@ -59,17 +59,13 @@ export default function TransactionsPage() {
   };
 
   const loadFormData = async () => {
-    try {
-      const [loansRes, profilesRes] = await Promise.all([
-        api.get('/loans?status=active&limit=100'),
-        api.get('/profiles/for-select'),
-      ]);
-      setLoans(loansRes.data.data.loans || []);
-      setCreditors(profilesRes.data.data.creditors || []);
-      setDebtors(profilesRes.data.data.debtors || []);
-    } catch {
-      toast.error('Failed to load creditors/debtors');
-    }
+    await Promise.allSettled([
+      api.get('/loans?status=active&limit=100').then(r => setLoans(r.data.data.loans || [])).catch(() => {}),
+      api.get('/profiles/for-select').then(r => {
+        setCreditors(r.data.data.creditors || []);
+        setDebtors(r.data.data.debtors || []);
+      }).catch(() => toast.error('Failed to load creditors/debtors')),
+    ]);
   };
 
   const openCreate = async () => {
@@ -224,8 +220,10 @@ export default function TransactionsPage() {
                             <>
                               <button onClick={() => handleApprove(t.id, 'approve')} className="text-xs text-green-700 hover:underline">✓</button>
                               <button onClick={() => handleApprove(t.id, 'reject')} className="text-xs text-red-600 hover:underline">✗</button>
-                              <button onClick={() => openEdit(t)} className="text-xs text-primary-800 hover:underline ml-1">Edit</button>
                             </>
+                          )}
+                          {isAdmin && !['cancelled', 'rejected'].includes(t.status) && (
+                            <button onClick={() => openEdit(t)} className="text-xs text-primary-800 hover:underline ml-1">Edit</button>
                           )}
                           {t.status !== 'cancelled' && t.deleted_at === null && (
                             <button onClick={() => setShowDelete(t)} className="text-xs text-red-500 hover:underline ml-1">Delete</button>
