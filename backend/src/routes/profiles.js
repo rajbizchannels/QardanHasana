@@ -13,6 +13,7 @@ router.delete('/debtor/:id', authenticate, requireRole('admin', 'accountant'), c
 router.post('/guarantor', authenticate, ctrl.createGuarantorProfile);
 router.delete('/guarantor/:id', authenticate, requireRole('admin', 'accountant'), ctrl.deleteGuarantorProfile);
 router.get('/maturity-alerts', authenticate, requireRole('admin', 'accountant'), ctrl.getMaturityAlerts);
+router.get('/deposits', authenticate, requireRole('admin', 'accountant'), ctrl.getAllDeposits);
 
 // Per-deposit maturity tracking
 router.get('/creditor/:creditorId/deposits', authenticate, requireRole('admin', 'accountant'), ctrl.getDeposits);

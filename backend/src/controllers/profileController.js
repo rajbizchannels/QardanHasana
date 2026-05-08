@@ -361,3 +361,48 @@ exports.deleteGuarantorProfile = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+exports.getAllDeposits = async (req, res) => {
+  try {
+    const { status, page = 1, limit = 20 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const conditions = ['1=1'];
+    const params = [];
+
+    if (status) { params.push(status); conditions.push(`cd.status = $${params.length}`); }
+
+    const where = conditions.join(' AND ');
+    const countRes = await query(`SELECT COUNT(*) FROM creditor_deposits cd WHERE ${where}`, params);
+
+    params.push(limit, offset);
+    const result = await query(
+      `SELECT cd.*,
+              cp.creditor_number,
+              cp.outstanding_amount,
+              u.first_name || ' ' || u.last_name as creditor_name,
+              u.its_number,
+              u.id as user_id,
+              cd.maturity_date - CURRENT_DATE as days_until_maturity
+       FROM creditor_deposits cd
+       JOIN creditor_profiles cp ON cd.creditor_id = cp.id
+       JOIN users u ON cp.user_id = u.id
+       WHERE ${where}
+       ORDER BY cd.maturity_date ASC, cd.status ASC
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
+    );
+
+    res.json({
+      success: true,
+      data: {
+        deposits: result.rows,
+        total: parseInt(countRes.rows[0].count),
+        page: parseInt(page),
+        totalPages: Math.ceil(parseInt(countRes.rows[0].count) / limit),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};

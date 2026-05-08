@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import {
   LayoutDashboard, Building2, Users, FileText, CreditCard, BookOpen,
-  Paperclip, CheckSquare, TrendingUp, Activity, Shield, Settings, LogOut, UserCircle,
+  Paperclip, CheckSquare, TrendingUp, Activity, Shield, Settings, LogOut, UserCircle, Vault,
 } from 'lucide-react';
 import { logout } from '../../store/slices/authSlice';
 import { hasRole } from '../../utils/helpers';
@@ -63,6 +63,9 @@ export default function Sidebar({ collapsed }) {
         <NavItem to="/loans" icon={ic(FileText)} label="Loan Applications" collapsed={collapsed} />
         <NavItem to="/transactions" icon={ic(CreditCard)} label="Transactions" collapsed={collapsed} />
         <NavItem to="/ledger" icon={ic(BookOpen)} label="My Ledger" collapsed={collapsed} />
+        {isAccountant && (
+          <NavItem to="/deposits" icon={ic(Vault)} label="Deposits" collapsed={collapsed} />
+        )}
         <NavItem to="/documents" icon={ic(Paperclip)} label="Documents" collapsed={collapsed} />
 
         {isAccountant && (
