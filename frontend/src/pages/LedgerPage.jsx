@@ -27,12 +27,13 @@ export default function LedgerPage() {
   const [accPage, setAccPage] = useState(1);
   const [accTotal, setAccTotal] = useState(0);
   const [accTotalPages, setAccTotalPages] = useState(1);
+  const [roleFilter, setRoleFilter] = useState('');
   const viewingAll = isAdmin && !paramUserId;
 
   useEffect(() => {
     if (viewingAll) fetchAllAccounts();
     else fetchLedger();
-  }, [page, targetUserId, dateRange, accPage]);
+  }, [page, targetUserId, dateRange, accPage, roleFilter]);
 
   const fetchLedger = async () => {
     setLoading(true);
@@ -52,7 +53,9 @@ export default function LedgerPage() {
   const fetchAllAccounts = async () => {
     setLoading(true);
     try {
-      const res = await api.get(`/ledger?page=${accPage}&limit=20`);
+      const params = new URLSearchParams({ page: accPage, limit: 20 });
+      if (roleFilter) params.append('role', roleFilter);
+      const res = await api.get(`/ledger?${params}`);
       setAllAccounts(res.data.data.accounts);
       setAccTotal(res.data.data.total);
       setAccTotalPages(res.data.data.totalPages);
@@ -66,28 +69,46 @@ export default function LedgerPage() {
         <div className="page-header">
           <div>
             <h1 className="page-title">All Ledger Accounts</h1>
-            <p className="page-subtitle">{accTotal} accounts</p>
+            <p className="page-subtitle">{accTotal} account{accTotal !== 1 ? 's' : ''}</p>
           </div>
         </div>
         <div className="card">
+          <div className="flex gap-2 mb-4">
+            {[{ value: '', label: 'All' }, { value: 'creditor', label: 'Creditors' }, { value: 'debtor', label: 'Debtors' }].map(({ value, label }) => (
+              <button key={value} onClick={() => { setRoleFilter(value); setAccPage(1); }}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${roleFilter === value ? 'bg-primary-900 text-white' : 'bg-dark-100 text-dark-600 hover:bg-dark-200'}`}>
+                {label}
+              </button>
+            ))}
+          </div>
           {loading ? <div className="flex justify-center py-12"><LoadingSpinner /></div> : (
             <>
               <div className="table-container">
                 <table className="table">
-                  <thead><tr><th>ITS</th><th>Name</th><th>Email</th><th>Balance</th><th>Entries</th><th>Last Activity</th><th>Actions</th></tr></thead>
+                  <thead><tr><th>ITS</th><th>Name</th><th>Type</th><th>Profile #</th><th>Balance</th><th>Entries</th><th>Last Activity</th><th>Actions</th></tr></thead>
                   <tbody>
                     {allAccounts.map((a) => (
                       <tr key={a.id}>
                         <td className="font-mono text-xs">{a.its_number}</td>
                         <td className="font-medium">{a.name}</td>
-                        <td className="text-xs">{a.email}</td>
+                        <td>
+                          {a.profile_type === 'both'
+                            ? <><span className="badge badge-purple text-xs mr-1">Creditor</span><span className="badge badge-blue text-xs">Debtor</span></>
+                            : a.profile_type === 'creditor'
+                            ? <span className="badge badge-purple text-xs">Creditor</span>
+                            : <span className="badge badge-blue text-xs">Debtor</span>}
+                        </td>
+                        <td className="font-mono text-xs text-dark-500">
+                          {a.creditor_number && <div>{a.creditor_number}</div>}
+                          {a.debtor_number && <div>{a.debtor_number}</div>}
+                        </td>
                         <td className={`font-semibold ${parseFloat(a.balance) >= 0 ? 'text-green-600' : 'text-red-600'}`}>{fmt(a.balance)}</td>
                         <td>{a.entry_count}</td>
                         <td className="text-xs">{a.last_activity ? formatDate(a.last_activity) : '—'}</td>
-                        <td><Link to={`/ledger/${a.id}`} className="text-primary-800 hover:underline text-sm">View Ledger</Link></td>
+                        <td><Link to={`/ledger/${a.id}`} className="text-primary-800 hover:underline text-sm">View</Link></td>
                       </tr>
                     ))}
-                    {allAccounts.length === 0 && <tr><td colSpan={7} className="text-center py-8 text-dark-400">No accounts</td></tr>}
+                    {allAccounts.length === 0 && <tr><td colSpan={8} className="text-center py-8 text-dark-400">No accounts found</td></tr>}
                   </tbody>
                 </table>
               </div>

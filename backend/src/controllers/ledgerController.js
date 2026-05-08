@@ -60,24 +60,51 @@ exports.getLedger = async (req, res) => {
 
 exports.getAllLedgers = async (req, res) => {
   try {
-    const { page = 1, limit = 50 } = req.query;
+    const { page = 1, limit = 20, role } = req.query;
     const offset = (page - 1) * limit;
 
-    const result = await query(
-      `SELECT u.id, u.its_number, u.first_name || ' ' || u.last_name as name, u.email,
-              COALESCE(SUM(CASE WHEN le.entry_type='credit' THEN le.amount ELSE -le.amount END), 0) as balance,
-              COUNT(le.id) as entry_count,
-              MAX(le.entry_date) as last_activity
+    const conditions = ['u.is_active = TRUE', '(cp.id IS NOT NULL OR dp.id IS NOT NULL)'];
+    const params = [];
+
+    if (role === 'creditor') { conditions.push('cp.id IS NOT NULL'); }
+    if (role === 'debtor')   { conditions.push('dp.id IS NOT NULL'); }
+
+    const where = conditions.join(' AND ');
+
+    const countRes = await query(
+      `SELECT COUNT(DISTINCT u.id)
        FROM users u
-       LEFT JOIN ledger_entries le ON u.id = le.user_id
-       WHERE u.is_active = TRUE
-       GROUP BY u.id
-       ORDER BY u.first_name, u.last_name
-       LIMIT $1 OFFSET $2`,
-      [limit, offset]
+       LEFT JOIN creditor_profiles cp ON u.id = cp.user_id
+       LEFT JOIN debtor_profiles dp ON u.id = dp.user_id
+       WHERE ${where}`,
+      params
     );
 
-    const countRes = await query(`SELECT COUNT(*) FROM users WHERE is_active = TRUE`);
+    params.push(limit, offset);
+    const result = await query(
+      `SELECT u.id, u.its_number,
+              u.first_name || ' ' || u.last_name as name,
+              u.email,
+              COALESCE(SUM(CASE WHEN le.entry_type='credit' THEN le.amount ELSE -le.amount END), 0) as balance,
+              COUNT(le.id) as entry_count,
+              MAX(le.entry_date) as last_activity,
+              cp.id as creditor_profile_id, cp.creditor_number,
+              dp.id as debtor_profile_id,   dp.debtor_number,
+              CASE
+                WHEN cp.id IS NOT NULL AND dp.id IS NOT NULL THEN 'both'
+                WHEN cp.id IS NOT NULL THEN 'creditor'
+                ELSE 'debtor'
+              END as profile_type
+       FROM users u
+       LEFT JOIN ledger_entries le ON u.id = le.user_id
+       LEFT JOIN creditor_profiles cp ON u.id = cp.user_id
+       LEFT JOIN debtor_profiles dp ON u.id = dp.user_id
+       WHERE ${where}
+       GROUP BY u.id, cp.id, cp.creditor_number, dp.id, dp.debtor_number
+       ORDER BY u.first_name, u.last_name
+       LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params
+    );
 
     res.json({
       success: true,
