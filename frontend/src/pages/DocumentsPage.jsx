@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useSelector } from 'react-redux';
 import { useDropzone } from 'react-dropzone';
-import { FileText, Image, Paperclip, Upload, Download, AlertTriangle } from 'lucide-react';
+import { FileText, Image, Paperclip, Upload, Download, AlertTriangle, Trash2 } from 'lucide-react';
 import api from '../utils/api';
 import { hasRole, formatDateTime } from '../utils/helpers';
 import StatusBadge from '../components/common/StatusBadge';
@@ -29,6 +29,8 @@ export default function DocumentsPage() {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
+  const [showDelete, setShowDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => { fetchDocs(); }, [page, statusFilter]);
 
@@ -73,6 +75,20 @@ export default function DocumentsPage() {
       fetchDocs();
     } catch { toast.error('Upload failed'); }
     finally { setUploading(false); }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await api.delete(`/documents/${showDelete.id}`);
+      toast.success('Document deleted');
+      setShowDelete(null);
+      fetchDocs();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete document');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleDownload = async (id, name) => {
@@ -142,7 +158,14 @@ export default function DocumentsPage() {
                       <td className="text-xs">{formatDateTime(d.created_at)}</td>
                       <td><StatusBadge status={d.status} /></td>
                       <td>
-                        <button onClick={() => handleDownload(d.id, d.original_name)} className="text-primary-800 hover:underline text-sm flex items-center gap-1"><Download className="w-3.5 h-3.5" /> Download</button>
+                        <div className="flex items-center gap-2">
+                          <button onClick={() => handleDownload(d.id, d.original_name)} className="text-primary-800 hover:underline text-sm flex items-center gap-1"><Download className="w-3.5 h-3.5" /> Download</button>
+                          {(isAdmin || d.user_id === user.id) && (
+                            <button onClick={() => setShowDelete(d)} className="text-red-500 hover:text-red-700">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -209,6 +232,21 @@ export default function DocumentsPage() {
             <p className="text-xs text-yellow-800">Uploaded documents will be reviewed by the accountant before being posted to your ledger.</p>
           </div>
         </form>
+      </Modal>
+
+      <Modal isOpen={!!showDelete} onClose={() => setShowDelete(null)} title="Delete Document"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setShowDelete(null)} className="btn-outline">Cancel</button>
+            <button onClick={handleDelete} disabled={deleting} className="btn-danger">
+              {deleting ? 'Deleting...' : 'Delete Document'}
+            </button>
+          </div>
+        }
+      >
+        <p>Delete <strong>{showDelete?.original_name}</strong>?</p>
+        <p className="text-sm text-dark-400 mt-1">Type: {showDelete?.document_type?.replace(/_/g, ' ')}</p>
+        <p className="text-sm text-red-600 mt-2">The file will be permanently removed from the server.</p>
       </Modal>
     </div>
   );

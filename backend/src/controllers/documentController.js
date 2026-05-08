@@ -125,3 +125,28 @@ exports.downloadDocument = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+exports.deleteDocument = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const isAdmin = req.user.roles.some(r => ['admin', 'accountant'].includes(r));
+
+    const docRes = await query(`SELECT * FROM documents WHERE id = $1`, [id]);
+    if (!docRes.rows[0]) return res.status(404).json({ success: false, message: 'Document not found' });
+
+    const doc = docRes.rows[0];
+    if (!isAdmin && doc.user_id !== req.user.id) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    if (doc.file_path && fs.existsSync(doc.file_path)) {
+      fs.unlinkSync(doc.file_path);
+    }
+
+    await query(`DELETE FROM documents WHERE id = $1`, [id]);
+    await audit({ userId: req.user.id, action: 'DOCUMENT_DELETED', entityType: 'document', entityId: id, ipAddress: req.ip });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};

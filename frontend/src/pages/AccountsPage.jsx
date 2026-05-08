@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { FileText, Building2, Users, AlertTriangle } from 'lucide-react';
+import { FileText, Building2, Users, AlertTriangle, Trash2 } from 'lucide-react';
 import api from '../utils/api';
 import { formatDate, hasRole } from '../utils/helpers';
 import { useCurrency } from '../utils/currency';
 import StatusBadge from '../components/common/StatusBadge';
 import Pagination from '../components/common/Pagination';
+import Modal from '../components/common/Modal';
 import LoadingSpinner from '../components/common/LoadingSpinner';
 import toast from 'react-hot-toast';
 
@@ -19,8 +20,26 @@ export default function AccountsPage() {
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [maturityAlerts, setMaturityAlerts] = useState([]);
+  const [showDelete, setShowDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => { fetchProfiles(); }, [tab, page]);
+
+  const handleDelete = async () => {
+    if (!showDelete) return;
+    setDeleting(true);
+    try {
+      const typeMap = { creditors: 'creditor', debtors: 'debtor', guarantors: 'guarantor' };
+      await api.delete(`/profiles/${typeMap[showDelete.tab]}/${showDelete.id}`);
+      toast.success(`${typeMap[showDelete.tab].charAt(0).toUpperCase() + typeMap[showDelete.tab].slice(1)} profile deactivated`);
+      setShowDelete(null);
+      fetchProfiles();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete profile');
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const fetchProfiles = async () => {
     setLoading(true);
@@ -102,7 +121,14 @@ export default function AccountsPage() {
                         </td>
                         <td><StatusBadge status={d.status} /></td>
                         <td>
-                          <Link to={`/users/${d.user_id}`} className="text-primary-800 hover:underline text-sm">Profile</Link>
+                          <div className="flex items-center gap-2">
+                            <Link to={`/users/${d.user_id}`} className="text-primary-800 hover:underline text-sm">Profile</Link>
+                            {isAccountant && (
+                              <button onClick={() => setShowDelete({ ...d, tab: 'debtors' })} className="text-red-500 hover:text-red-700">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     ))}
@@ -139,7 +165,16 @@ export default function AccountsPage() {
                           ) : <span className="text-dark-300 text-xs">—</span>}
                         </td>
                         <td><StatusBadge status={c.status} /></td>
-                        <td><Link to={`/users/${c.user_id}`} className="text-primary-800 hover:underline text-sm">Profile</Link></td>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <Link to={`/users/${c.user_id}`} className="text-primary-800 hover:underline text-sm">Profile</Link>
+                            {isAccountant && (
+                              <button onClick={() => setShowDelete({ ...c, tab: 'creditors' })} className="text-red-500 hover:text-red-700">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                     {currentData.length === 0 && <tr><td colSpan={10} className="text-center py-8 text-dark-400">No creditors found</td></tr>}
@@ -159,7 +194,16 @@ export default function AccountsPage() {
                         <td>{fmt(g.total_guaranteed)}</td>
                         <td>{g.active_guarantees}</td>
                         <td><StatusBadge status={g.status} /></td>
-                        <td><Link to={`/users/${g.user_id}`} className="text-primary-800 hover:underline text-sm">Profile</Link></td>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <Link to={`/users/${g.user_id}`} className="text-primary-800 hover:underline text-sm">Profile</Link>
+                            {isAccountant && (
+                              <button onClick={() => setShowDelete({ ...g, tab: 'guarantors' })} className="text-red-500 hover:text-red-700">
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     ))}
                     {currentData.length === 0 && <tr><td colSpan={7} className="text-center py-8 text-dark-400">No guarantors found</td></tr>}
@@ -170,6 +214,21 @@ export default function AccountsPage() {
           </div>
         )}
       </div>
+
+      <Modal isOpen={!!showDelete} onClose={() => setShowDelete(null)} title="Deactivate Profile"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setShowDelete(null)} className="btn-outline">Cancel</button>
+            <button onClick={handleDelete} disabled={deleting} className="btn-danger">
+              {deleting ? 'Deactivating...' : 'Deactivate'}
+            </button>
+          </div>
+        }
+      >
+        <p>Deactivate the {showDelete?.tab?.replace(/s$/, '')} profile for <strong>{showDelete?.name}</strong>?</p>
+        <p className="text-sm text-dark-400 mt-1">ITS: {showDelete?.its_number}</p>
+        <p className="text-sm text-dark-400 mt-2">The profile will be hidden from all lists. The user account is not affected.</p>
+      </Modal>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { Trash2 } from 'lucide-react';
 import api from '../utils/api';
 import { hasRole, formatDate, formatDateTime } from '../utils/helpers';
 import StatusBadge from '../components/common/StatusBadge';
@@ -13,6 +14,7 @@ export default function UsersPage() {
   const { user: authUser } = useSelector((s) => s.auth);
   const navigate = useNavigate();
   const isAdmin = hasRole(authUser, 'admin');
+  const isAccountant = hasRole(authUser, 'admin', 'accountant');
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -22,6 +24,8 @@ export default function UsersPage() {
   const [showCreate, setShowCreate] = useState(false);
   const [newUser, setNewUser] = useState({ itsNumber: '', email: '', firstName: '', lastName: '', phone: '', roles: ['member'] });
   const [creating, setCreating] = useState(false);
+  const [showDelete, setShowDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -56,6 +60,20 @@ export default function UsersPage() {
       toast.error('Failed to create user');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await api.delete(`/users/${showDelete.id}`);
+      toast.success('User deactivated successfully');
+      setShowDelete(null);
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to deactivate user');
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -112,7 +130,14 @@ export default function UsersPage() {
                       <td><StatusBadge status={u.is_active ? 'active' : 'inactive'} /></td>
                       <td className="text-xs">{u.last_login ? formatDateTime(u.last_login) : 'Never'}</td>
                       <td>
-                        <Link to={`/users/${u.id}`} className="text-primary-800 hover:underline text-sm">View</Link>
+                        <div className="flex items-center gap-2">
+                          <Link to={`/users/${u.id}`} className="text-primary-800 hover:underline text-sm">View</Link>
+                          {isAccountant && u.is_active && (
+                            <button onClick={() => setShowDelete(u)} className="text-red-500 hover:text-red-700">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -159,6 +184,20 @@ export default function UsersPage() {
           </div>
           <p className="text-xs text-dark-400">Default password will be the ITS number. User should change on first login.</p>
         </form>
+      </Modal>
+
+      <Modal isOpen={!!showDelete} onClose={() => setShowDelete(null)} title="Deactivate User"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setShowDelete(null)} className="btn-outline">Cancel</button>
+            <button onClick={handleDelete} disabled={deleting} className="btn-danger">
+              {deleting ? 'Deactivating...' : 'Deactivate User'}
+            </button>
+          </div>
+        }
+      >
+        <p>Deactivate <strong>{showDelete?.first_name} {showDelete?.last_name}</strong> (ITS: {showDelete?.its_number})?</p>
+        <p className="text-sm text-dark-400 mt-2">The user will no longer be able to log in. This can be reversed by editing their profile.</p>
       </Modal>
     </div>
   );

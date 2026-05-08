@@ -7,5 +7,6 @@ router.get('/', authenticate, ctrl.getLoans);
 router.post('/', authenticate, ctrl.createLoan);
 router.get('/:id', authenticate, ctrl.getLoan);
 router.put('/:id', authenticate, ctrl.updateLoan);
+router.delete('/:id', authenticate, requireRole('admin', 'accountant'), ctrl.deleteLoan);
 
 module.exports = router;

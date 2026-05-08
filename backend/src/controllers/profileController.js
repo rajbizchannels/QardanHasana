@@ -322,3 +322,42 @@ exports.getMaturityAlerts = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+exports.deleteCreditorProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await query(`SELECT id FROM creditor_profiles WHERE id = $1`, [id]);
+    if (!existing.rows[0]) return res.status(404).json({ success: false, message: 'Creditor profile not found' });
+    await query(`UPDATE creditor_profiles SET is_active = FALSE, updated_at = NOW() WHERE id = $1`, [id]);
+    await audit({ userId: req.user.id, action: 'CREDITOR_PROFILE_DELETED', entityType: 'creditor_profile', entityId: id, ipAddress: req.ip });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.deleteDebtorProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await query(`SELECT id FROM debtor_profiles WHERE id = $1`, [id]);
+    if (!existing.rows[0]) return res.status(404).json({ success: false, message: 'Debtor profile not found' });
+    await query(`UPDATE debtor_profiles SET is_active = FALSE, updated_at = NOW() WHERE id = $1`, [id]);
+    await audit({ userId: req.user.id, action: 'DEBTOR_PROFILE_DELETED', entityType: 'debtor_profile', entityId: id, ipAddress: req.ip });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.deleteGuarantorProfile = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const existing = await query(`SELECT id FROM guarantor_profiles WHERE id = $1`, [id]);
+    if (!existing.rows[0]) return res.status(404).json({ success: false, message: 'Guarantor profile not found' });
+    await query(`UPDATE guarantor_profiles SET is_active = FALSE, updated_at = NOW() WHERE id = $1`, [id]);
+    await audit({ userId: req.user.id, action: 'GUARANTOR_PROFILE_DELETED', entityType: 'guarantor_profile', entityId: id, ipAddress: req.ip });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};

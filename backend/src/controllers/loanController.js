@@ -228,3 +228,24 @@ exports.updateLoan = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+exports.deleteLoan = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const loanRes = await query(`SELECT loan_number, status FROM loans WHERE id = $1`, [id]);
+    if (!loanRes.rows[0]) return res.status(404).json({ success: false, message: 'Loan not found' });
+
+    const { status, loan_number } = loanRes.rows[0];
+    const deletable = ['pending', 'under_review', 'rejected'];
+    if (!deletable.includes(status)) {
+      return res.status(400).json({ success: false, message: `Cannot delete loan with status '${status}'. Only pending, under review, or rejected loans can be deleted.` });
+    }
+
+    await query(`DELETE FROM loans WHERE id = $1`, [id]);
+    await audit({ userId: req.user.id, action: 'LOAN_DELETED', entityType: 'loan', entityId: id, newValues: { loan_number }, ipAddress: req.ip });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};

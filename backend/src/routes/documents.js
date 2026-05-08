@@ -7,5 +7,6 @@ const ctrl = require('../controllers/documentController');
 router.get('/', authenticate, ctrl.getDocuments);
 router.post('/', authenticate, upload.single('file'), ctrl.uploadDocument);
 router.get('/:id/download', authenticate, ctrl.downloadDocument);
+router.delete('/:id', authenticate, ctrl.deleteDocument);
 
 module.exports = router;

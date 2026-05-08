@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
+import { Trash2 } from 'lucide-react';
 import api from '../utils/api';
 import { hasRole, formatDate } from '../utils/helpers';
 import { useCurrency } from '../utils/currency';
@@ -31,6 +32,8 @@ export default function LoansPage() {
   const [form, setForm] = useState(defaultLoan);
   const [creating, setCreating] = useState(false);
   const [debtors, setDebtors] = useState([]);
+  const [showDelete, setShowDelete] = useState(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => { fetchLoans(); }, [page, statusFilter]);
   useEffect(() => { if (showCreate && isAdmin) fetchDebtors(); }, [showCreate]);
@@ -61,6 +64,20 @@ export default function LoansPage() {
     const gs = [...form.guarantors];
     gs[i] = { ...gs[i], [field]: val };
     setForm({ ...form, guarantors: gs });
+  };
+
+  const handleDelete = async () => {
+    setDeleting(true);
+    try {
+      await api.delete(`/loans/${showDelete.id}`);
+      toast.success('Loan deleted');
+      setShowDelete(null);
+      fetchLoans();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete loan');
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleCreate = async (e) => {
@@ -138,7 +155,14 @@ export default function LoansPage() {
                         </div>
                       </td>
                       <td>
-                        <Link to={`/loans/${l.id}`} className="text-primary-800 hover:underline text-sm">View</Link>
+                        <div className="flex items-center gap-2">
+                          <Link to={`/loans/${l.id}`} className="text-primary-800 hover:underline text-sm">View</Link>
+                          {isAdmin && ['pending', 'under_review', 'rejected'].includes(l.status) && (
+                            <button onClick={() => setShowDelete(l)} className="text-red-500 hover:text-red-700">
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -239,6 +263,22 @@ export default function LoansPage() {
             <textarea className="input-field" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </div>
         </form>
+      </Modal>
+
+      <Modal isOpen={!!showDelete} onClose={() => setShowDelete(null)} title="Delete Loan"
+        footer={
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setShowDelete(null)} className="btn-outline">Cancel</button>
+            <button onClick={handleDelete} disabled={deleting} className="btn-danger">
+              {deleting ? 'Deleting...' : 'Delete Loan'}
+            </button>
+          </div>
+        }
+      >
+        <p>Delete loan <strong>{showDelete?.loan_number}</strong>?</p>
+        <p className="text-sm text-dark-400 mt-1">Debtor: {showDelete?.debtor_name}</p>
+        <p className="text-sm text-dark-400">Amount: {showDelete?.principal_amount ? fmt(showDelete.principal_amount) : ''}</p>
+        <p className="text-sm text-red-600 mt-2">This action cannot be undone.</p>
       </Modal>
     </div>
   );
