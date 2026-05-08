@@ -1,6 +1,7 @@
 const { query } = require('../config/database');
 const { sendEmail } = require('../utils/email');
 const audit = require('../utils/audit');
+const { notify } = require('../utils/notificationService');
 
 const generateLoanNumber = () => `LN${Date.now().toString().slice(-8)}`;
 
@@ -197,17 +198,38 @@ exports.updateLoan = async (req, res) => {
         );
 
         const debtorUser = await query(
-          `SELECT u.email, u.first_name, u.last_name FROM users u JOIN debtor_profiles dp ON u.id = dp.user_id WHERE dp.id = $1`,
+          `SELECT u.id, u.first_name, u.last_name FROM users u JOIN debtor_profiles dp ON u.id = dp.user_id WHERE dp.id = $1`,
           [loanRes.rows[0].debtor_id]
         );
-        await sendEmail({
-          to: debtorUser.rows[0]?.email,
-          templateName: 'loanUpdate',
-          data: { loanNumber: loanRes.rows[0].loan_number, status: 'approved', amount: loanRes.rows[0].principal_amount, currency: 'INR' },
-        });
+        if (debtorUser.rows[0]) {
+          await notify({
+            userId: debtorUser.rows[0].id,
+            type: 'loan_status',
+            title: `Loan Approved — ${loanRes.rows[0].loan_number}`,
+            message: `Your loan application ${loanRes.rows[0].loan_number} has been approved.`,
+            notifType: 'success', referenceType: 'loan', referenceId: id,
+            emailTemplate: 'loanUpdate',
+            emailData: { loanNumber: loanRes.rows[0].loan_number, status: 'approved', amount: loanRes.rows[0].principal_amount, currency: 'INR' },
+          });
+        }
       }
-      if (status === 'rejected' && rejectionReason) {
-        params.push(rejectionReason); updateFields.push(`rejection_reason = $${params.length}`);
+      if (status === 'rejected') {
+        if (rejectionReason) { params.push(rejectionReason); updateFields.push(`rejection_reason = $${params.length}`); }
+        const debtorUser = await query(
+          `SELECT u.id FROM users u JOIN debtor_profiles dp ON u.id = dp.user_id WHERE dp.id = $1`,
+          [loanRes.rows[0].debtor_id]
+        );
+        if (debtorUser.rows[0]) {
+          await notify({
+            userId: debtorUser.rows[0].id,
+            type: 'loan_status',
+            title: `Loan Application Rejected — ${loanRes.rows[0].loan_number}`,
+            message: `Your loan application ${loanRes.rows[0].loan_number} was not approved.${rejectionReason ? ` Reason: ${rejectionReason}` : ''}`,
+            notifType: 'error', referenceType: 'loan', referenceId: id,
+            emailTemplate: 'loanUpdate',
+            emailData: { loanNumber: loanRes.rows[0].loan_number, status: 'rejected', amount: loanRes.rows[0].principal_amount, currency: 'INR', notes: rejectionReason },
+          });
+        }
       }
     }
 

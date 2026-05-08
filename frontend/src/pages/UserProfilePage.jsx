@@ -196,7 +196,7 @@ export default function UserProfilePage({ isSelf, isNew }) {
   const [pwdForm, setPwdForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
 
   const [form, setForm] = useState({
-    itsNumber: '', firstName: '', lastName: '', phone: '', dateOfBirth: '', gender: '', email: '',
+    itsNumber: '', firstName: '', lastName: '', phone: '', whatsapp: '', dateOfBirth: '', gender: '', email: '',
     addressLine1: '', addressLine2: '', city: '', state: '', country: 'India', postalCode: '',
     involvedInInterest: false, involvedInInsurance: false, involvedInSubstanceAbuse: false,
     involvedInCrypto: false, involvedInPonzi: false, involvedInOtherSchemes: false,
@@ -218,6 +218,7 @@ export default function UserProfilePage({ isSelf, isNew }) {
         firstName: u.first_name || '',
         lastName: u.last_name || '',
         phone: u.phone || '',
+        whatsapp: u.whatsapp || '',
         dateOfBirth: u.date_of_birth ? u.date_of_birth.split('T')[0] : '',
         gender: u.gender || '',
         email: u.email || '',
@@ -358,6 +359,10 @@ export default function UserProfilePage({ isSelf, isNew }) {
               <div>
                 <label className="input-label">Phone</label>
                 <input className="input-field" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} disabled={!canEdit} />
+              </div>
+              <div>
+                <label className="input-label">WhatsApp Number</label>
+                <input className="input-field" value={form.whatsapp} onChange={(e) => setForm({ ...form, whatsapp: e.target.value })} disabled={!canEdit} placeholder="e.g. +919876543210" />
               </div>
               <div>
                 <label className="input-label">Date of Birth</label>

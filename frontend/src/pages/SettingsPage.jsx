@@ -6,6 +6,7 @@ import { hasRole } from '../utils/helpers';
 import { setCurrency } from '../store/slices/settingsSlice';
 import Toggle from '../components/common/Toggle';
 import LoadingSpinner from '../components/common/LoadingSpinner';
+import NotificationPreferences from '../components/common/NotificationPreferences';
 import toast from 'react-hot-toast';
 
 const CURRENCIES = ['INR', 'USD', 'GBP', 'EUR', 'AED', 'SAR', 'PKR'];
@@ -304,11 +305,14 @@ export default function SettingsPage() {
 
       {/* My Preferences — all users */}
       {tab === 'preferences' && (
+        <NotificationPreferences userId={user?.id} />
+      )}
+      {tab === 'preferences' && (
         <div className="card max-w-2xl space-y-5">
           <h3 className="font-semibold text-primary-900 border-b pb-2 flex items-center gap-2">
             <Bell className="w-4 h-4" /> Loan Payment Reminders
           </h3>
-          <p className="text-sm text-dark-500">These preferences are stored on this device only.</p>
+          <p className="text-sm text-dark-500">Device-only preference — not synced to the server.</p>
 
           <div className="flex items-center justify-between py-2 border-b border-dark-50">
             <div>
@@ -333,14 +337,6 @@ export default function SettingsPage() {
               disabled={!localPrefs.reminder_enabled}
             />
             <p className="text-xs text-dark-400 mt-1">Default: 3 days. Min 1, max 30.</p>
-          </div>
-
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 flex gap-2">
-            <Info className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-blue-800">
-              Reminders appear on your dashboard when an installment payment is due within the configured number of days.
-              Preferences are device-specific and not synced to the server.
-            </p>
           </div>
         </div>
       )}

@@ -1,6 +1,7 @@
 const { query } = require('../config/database');
 const { sendEmail } = require('../utils/email');
 const audit = require('../utils/audit');
+const { notify } = require('../utils/notificationService');
 
 exports.getApprovals = async (req, res) => {
   try {
@@ -111,11 +112,12 @@ exports.reviewApproval = async (req, res) => {
             involved_in_other_schemes = COALESCE($17, involved_in_other_schemes),
             other_schemes_description = COALESCE($18, other_schemes_description),
             its_number = COALESCE($19, its_number),
+            whatsapp = COALESCE($20, whatsapp),
             profile_changes_pending = NULL,
             profile_change_approved_at = NOW(),
-            profile_change_approved_by = $20,
+            profile_change_approved_by = $21,
             updated_at = NOW()
-           WHERE id = $21`,
+           WHERE id = $22`,
           [
             changes.firstName || null, changes.lastName || null, changes.phone || null,
             changes.dateOfBirth || null, changes.gender || null,
@@ -127,6 +129,7 @@ exports.reviewApproval = async (req, res) => {
             changes.involvedInPonzi ?? null, changes.involvedInOtherSchemes ?? null,
             changes.otherSchemesDescription || null,
             changes.itsNumber || null,
+            changes.whatsapp || null,
             req.user.id, approval.reference_id,
           ]
         );
@@ -155,17 +158,55 @@ exports.reviewApproval = async (req, res) => {
       await query(`UPDATE users SET is_active = FALSE, updated_at = NOW() WHERE id = $1`, [approval.reference_id]);
     }
 
-    const requesterRes = await query(`SELECT email, first_name FROM users WHERE id = $1`, [approval.requested_by]);
-    if (requesterRes.rows[0]) {
-      await sendEmail({
-        to: requesterRes.rows[0].email,
-        templateName: 'approvalStatus',
-        data: {
-          status: newStatus,
-          title: approval.title,
-          notes,
-          reviewedBy: `${req.user.firstName} ${req.user.lastName}`,
-        },
+    // Notify the requester based on approval type
+    const requesterRes = await query(`SELECT first_name, last_name FROM users WHERE id = $1`, [approval.requested_by]);
+    const requesterName = requesterRes.rows[0] ? `${requesterRes.rows[0].first_name} ${requesterRes.rows[0].last_name}` : '';
+    const reviewerName = `${req.user.firstName} ${req.user.lastName}`;
+
+    if (approval.reference_type === 'user_profile') {
+      await notify({
+        userId: approval.requested_by,
+        type: 'profile_reviewed',
+        title: `Profile Update ${newStatus === 'approved' ? 'Approved' : 'Rejected'}`,
+        message: `Your profile update request has been ${newStatus}${notes ? `: ${notes}` : '.'}`,
+        notifType: newStatus === 'approved' ? 'success' : 'error',
+        referenceType: 'approval', referenceId: id,
+        emailTemplate: 'profileReviewed',
+        emailData: { name: requesterName, status: newStatus, notes },
+      });
+    } else if (approval.reference_type === 'document') {
+      const docRes = await query(`SELECT original_name FROM documents WHERE id = $1`, [approval.reference_id]);
+      await notify({
+        userId: approval.requested_by,
+        type: 'document_reviewed',
+        title: `Document ${newStatus === 'approved' ? 'Approved' : 'Rejected'}`,
+        message: `Your document "${docRes.rows[0]?.original_name}" has been ${newStatus}${notes ? `: ${notes}` : '.'}`,
+        notifType: newStatus === 'approved' ? 'success' : 'error',
+        referenceType: 'approval', referenceId: id,
+        emailTemplate: 'documentReviewed',
+        emailData: { name: requesterName, status: newStatus, fileName: docRes.rows[0]?.original_name, notes },
+      });
+    } else if (approval.reference_type === 'transaction' || approval.reference_type === 'transaction_deletion') {
+      await notify({
+        userId: approval.requested_by,
+        type: 'transaction_posted',
+        title: `Transaction Request ${newStatus === 'approved' ? 'Approved' : 'Rejected'}`,
+        message: `Your transaction request has been ${newStatus}${notes ? `: ${notes}` : '.'}`,
+        notifType: newStatus === 'approved' ? 'success' : 'error',
+        referenceType: 'approval', referenceId: id,
+        emailTemplate: 'approvalStatus',
+        emailData: { status: newStatus, title: approval.title, notes, reviewedBy: reviewerName },
+      });
+    } else {
+      await notify({
+        userId: approval.requested_by,
+        type: 'account_activity',
+        title: `Request ${newStatus === 'approved' ? 'Approved' : 'Rejected'}: ${approval.title}`,
+        message: `Your request "${approval.title}" has been ${newStatus}${notes ? `: ${notes}` : '.'}`,
+        notifType: newStatus === 'approved' ? 'success' : 'error',
+        referenceType: 'approval', referenceId: id,
+        emailTemplate: 'approvalStatus',
+        emailData: { status: newStatus, title: approval.title, notes, reviewedBy: reviewerName },
       });
     }
 

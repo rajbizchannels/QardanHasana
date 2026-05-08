@@ -90,6 +90,8 @@ const { query: dbQuery } = require('./config/database');
     )`,
     `CREATE INDEX IF NOT EXISTS idx_creditor_deposits_creditor ON creditor_deposits(creditor_id)`,
     `CREATE INDEX IF NOT EXISTS idx_creditor_deposits_maturity ON creditor_deposits(maturity_date) WHERE status = 'active'`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS whatsapp VARCHAR(20)`,
+    `ALTER TABLE users ADD COLUMN IF NOT EXISTS notification_preferences JSONB DEFAULT '{}'::jsonb`,
   ];
   for (const sql of migrations) {
     try { await dbQuery(sql); } catch (e) { console.warn('Migration warning:', e.message); }

@@ -1,6 +1,7 @@
 const { query, getClient } = require('../config/database');
 const { sendEmail } = require('../utils/email');
 const audit = require('../utils/audit');
+const { notify } = require('../utils/notificationService');
 
 const generateTxnNumber = () => `TXN${Date.now().toString().slice(-8)}`;
 
@@ -186,16 +187,15 @@ exports.approveTransaction = async (req, res) => {
     );
 
     if (txn.created_by) {
-      const creatorRes = await query(`SELECT email FROM users WHERE id = $1`, [txn.created_by]);
-      await sendEmail({
-        to: creatorRes.rows[0]?.email,
-        templateName: 'approvalStatus',
-        data: {
-          status: newStatus,
-          title: `Transaction ${txn.transaction_number}`,
-          notes,
-          reviewedBy: `${req.user.firstName} ${req.user.lastName}`,
-        },
+      await notify({
+        userId: txn.created_by,
+        type: 'transaction_posted',
+        title: `Transaction ${newStatus === 'approved' ? 'Posted' : 'Rejected'} — ${txn.transaction_number}`,
+        message: `Your transaction ${txn.transaction_number} has been ${newStatus === 'approved' ? 'approved and posted to the ledger' : 'rejected'}.${notes ? ` Notes: ${notes}` : ''}`,
+        notifType: newStatus === 'approved' ? 'success' : 'error',
+        referenceType: 'transaction', referenceId: id,
+        emailTemplate: 'approvalStatus',
+        emailData: { status: newStatus, title: `Transaction ${txn.transaction_number}`, notes, reviewedBy: `${req.user.firstName} ${req.user.lastName}` },
       });
     }
 

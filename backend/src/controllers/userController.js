@@ -167,7 +167,7 @@ exports.updateUser = async (req, res) => {
     if (!current) return res.status(404).json({ success: false, message: 'User not found' });
 
     const {
-      itsNumber, firstName, lastName, phone, dateOfBirth, gender,
+      itsNumber, firstName, lastName, phone, whatsapp, dateOfBirth, gender,
       addressLine1, addressLine2, city, state, country, postalCode,
       involvedInInterest, involvedInInsurance, involvedInSubstanceAbuse,
       involvedInCrypto, involvedInPonzi, involvedInOtherSchemes, otherSchemesDescription,
@@ -182,7 +182,7 @@ exports.updateUser = async (req, res) => {
 
     if (isOwnProfile && !isAdmin) {
       const changes = {
-        itsNumber, firstName, lastName, phone, dateOfBirth, gender,
+        itsNumber, firstName, lastName, phone, whatsapp, dateOfBirth, gender,
         addressLine1, addressLine2, city, state, country, postalCode,
         involvedInInterest, involvedInInsurance, involvedInSubstanceAbuse,
         involvedInCrypto, involvedInPonzi, involvedInOtherSchemes, otherSchemesDescription,
@@ -224,28 +224,29 @@ exports.updateUser = async (req, res) => {
         first_name = COALESCE($2, first_name),
         last_name = COALESCE($3, last_name),
         phone = COALESCE($4, phone),
-        date_of_birth = COALESCE($5, date_of_birth),
-        gender = COALESCE($6, gender),
-        address_line1 = COALESCE($7, address_line1),
-        address_line2 = COALESCE($8, address_line2),
-        city = COALESCE($9, city),
-        state = COALESCE($10, state),
-        country = COALESCE($11, country),
-        postal_code = COALESCE($12, postal_code),
-        involved_in_interest = COALESCE($13, involved_in_interest),
-        involved_in_insurance = COALESCE($14, involved_in_insurance),
-        involved_in_substance_abuse = COALESCE($15, involved_in_substance_abuse),
-        involved_in_crypto = COALESCE($16, involved_in_crypto),
-        involved_in_ponzi = COALESCE($17, involved_in_ponzi),
-        involved_in_other_schemes = COALESCE($18, involved_in_other_schemes),
-        other_schemes_description = COALESCE($19, other_schemes_description),
-        is_active = COALESCE($20, is_active),
+        whatsapp = COALESCE($5, whatsapp),
+        date_of_birth = COALESCE($6, date_of_birth),
+        gender = COALESCE($7, gender),
+        address_line1 = COALESCE($8, address_line1),
+        address_line2 = COALESCE($9, address_line2),
+        city = COALESCE($10, city),
+        state = COALESCE($11, state),
+        country = COALESCE($12, country),
+        postal_code = COALESCE($13, postal_code),
+        involved_in_interest = COALESCE($14, involved_in_interest),
+        involved_in_insurance = COALESCE($15, involved_in_insurance),
+        involved_in_substance_abuse = COALESCE($16, involved_in_substance_abuse),
+        involved_in_crypto = COALESCE($17, involved_in_crypto),
+        involved_in_ponzi = COALESCE($18, involved_in_ponzi),
+        involved_in_other_schemes = COALESCE($19, involved_in_other_schemes),
+        other_schemes_description = COALESCE($20, other_schemes_description),
+        is_active = COALESCE($21, is_active),
         profile_changes_pending = NULL,
         profile_change_approved_at = NOW(),
-        profile_change_approved_by = $21,
+        profile_change_approved_by = $22,
         updated_at = NOW()
-       WHERE id = $22 RETURNING *`,
-      [itsNumber || null, firstName, lastName, phone, dateOfBirth || null, gender,
+       WHERE id = $23 RETURNING *`,
+      [itsNumber || null, firstName, lastName, phone, whatsapp || null, dateOfBirth || null, gender,
        addressLine1, addressLine2, city, state, country, postalCode,
        involvedInInterest, involvedInInsurance, involvedInSubstanceAbuse,
        involvedInCrypto, involvedInPonzi, involvedInOtherSchemes, otherSchemesDescription,
@@ -266,24 +267,50 @@ exports.updateUser = async (req, res) => {
 exports.deleteUser = async (req, res) => {
   try {
     const { id } = req.params;
-    const isAdmin = req.user.roles.includes('admin');
+    const isAdminOrAccountant = req.user.roles.some(r => ['admin', 'accountant'].includes(r));
+
+    if (req.user.id === id) {
+      return res.status(400).json({ success: false, message: 'You cannot deactivate your own account' });
+    }
 
     const userRes = await query(`SELECT * FROM users WHERE id = $1`, [id]);
     if (!userRes.rows[0]) return res.status(404).json({ success: false, message: 'User not found' });
 
-    if (!isAdmin) {
-      await query(
-        `INSERT INTO approvals (reference_type, reference_id, title, description, requested_by, priority)
-         VALUES ('account_deletion', $1, $2, $3, $4, 'high')`,
-        [id, `Account Deletion Request`, `User deletion requested for ${userRes.rows[0].its_number}`, req.user.id]
-      );
-      return res.json({ success: true, message: 'Account deletion submitted for approval' });
+    if (!isAdminOrAccountant) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
     await query(`UPDATE users SET is_active = FALSE, updated_at = NOW() WHERE id = $1`, [id]);
-    await audit({ userId: req.user.id, action: 'USER_DELETED', entityType: 'user', entityId: id, ipAddress: req.ip });
+    await audit({ userId: req.user.id, action: 'USER_DEACTIVATED', entityType: 'user', entityId: id, ipAddress: req.ip });
 
     res.json({ success: true, message: 'User deactivated successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
+exports.updateNotificationPreferences = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const isOwnProfile = req.user.id === id;
+    const isAdmin = req.user.roles.some(r => ['admin', 'accountant'].includes(r));
+
+    if (!isOwnProfile && !isAdmin) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    const { preferences } = req.body;
+    if (!preferences || typeof preferences !== 'object') {
+      return res.status(400).json({ success: false, message: 'Invalid preferences object' });
+    }
+
+    const result = await query(
+      `UPDATE users SET notification_preferences = $1, updated_at = NOW() WHERE id = $2 RETURNING notification_preferences`,
+      [JSON.stringify(preferences), id]
+    );
+
+    if (!result.rows[0]) return res.status(404).json({ success: false, message: 'User not found' });
+    res.json({ success: true, data: result.rows[0].notification_preferences });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }

@@ -127,6 +127,69 @@ const emailTemplates = {
       </div>`,
   }),
 
+  paymentDue: (data) => ({
+    subject: `Payment Due ${data.daysUntil === 0 ? 'Today' : `in ${data.daysUntil} Day(s)`} — Loan ${data.loanNumber}`,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+        <div style="background:#1B4332;padding:20px;text-align:center;"><h1 style="color:#D4AF37;margin:0;">Qardan Hasana</h1></div>
+        <div style="padding:30px;background:#f9f9f9;">
+          <h2 style="color:#D97706;">Payment Reminder</h2>
+          <p>Dear ${data.name},</p>
+          <p>Your installment for loan <strong>${data.loanNumber}</strong> is due <strong>${data.daysUntil === 0 ? 'today' : `in ${data.daysUntil} day(s)`}</strong>.</p>
+          <p><strong>Amount Due:</strong> ${data.currency} ${data.amount}</p>
+          <p><strong>Due Date:</strong> ${data.dueDate}</p>
+          <p>Please ensure timely payment to maintain a good credit standing.</p>
+        </div>
+        <div style="background:#1B4332;padding:15px;text-align:center;"><p style="color:#fff;margin:0;font-size:12px;">© ${new Date().getFullYear()} Qardan Hasana</p></div>
+      </div>`,
+  }),
+
+  documentReviewed: (data) => ({
+    subject: `Document ${data.status === 'approved' ? 'Approved' : 'Rejected'} — Qardan Hasana`,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+        <div style="background:#1B4332;padding:20px;text-align:center;"><h1 style="color:#D4AF37;margin:0;">Qardan Hasana</h1></div>
+        <div style="padding:30px;background:#f9f9f9;">
+          <h2 style="color:${data.status === 'approved' ? '#1B4332' : '#dc2626'}">Document ${data.status === 'approved' ? '✓ Approved' : '✗ Rejected'}</h2>
+          <p>Dear ${data.name},</p>
+          <p>Your document <strong>${data.fileName}</strong> has been <strong>${data.status}</strong>.</p>
+          ${data.notes ? `<p><strong>Notes:</strong> ${data.notes}</p>` : ''}
+        </div>
+        <div style="background:#1B4332;padding:15px;text-align:center;"><p style="color:#fff;margin:0;font-size:12px;">© ${new Date().getFullYear()} Qardan Hasana</p></div>
+      </div>`,
+  }),
+
+  profileReviewed: (data) => ({
+    subject: `Profile Update ${data.status === 'approved' ? 'Approved' : 'Rejected'} — Qardan Hasana`,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+        <div style="background:#1B4332;padding:20px;text-align:center;"><h1 style="color:#D4AF37;margin:0;">Qardan Hasana</h1></div>
+        <div style="padding:30px;background:#f9f9f9;">
+          <h2 style="color:${data.status === 'approved' ? '#1B4332' : '#dc2626'}">Profile Update ${data.status === 'approved' ? '✓ Approved' : '✗ Rejected'}</h2>
+          <p>Dear ${data.name},</p>
+          <p>Your profile update request has been <strong>${data.status}</strong>.</p>
+          ${data.notes ? `<p><strong>Notes:</strong> ${data.notes}</p>` : ''}
+        </div>
+        <div style="background:#1B4332;padding:15px;text-align:center;"><p style="color:#fff;margin:0;font-size:12px;">© ${new Date().getFullYear()} Qardan Hasana</p></div>
+      </div>`,
+  }),
+
+  depositMaturity: (data) => ({
+    subject: `Deposit Maturity ${data.days < 0 ? 'Overdue' : `in ${data.days} Day(s)`} — Qardan Hasana`,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+        <div style="background:#1B4332;padding:20px;text-align:center;"><h1 style="color:#D4AF37;margin:0;">Qardan Hasana</h1></div>
+        <div style="padding:30px;background:#f9f9f9;">
+          <h2 style="color:${data.days < 0 ? '#dc2626' : '#D97706'}">Deposit Maturity ${data.days < 0 ? 'Overdue' : 'Approaching'}</h2>
+          <p>Dear ${data.name},</p>
+          <p>Your deposit of <strong>${data.currency} ${data.amount}</strong> ${data.days < 0 ? `matured <strong>${Math.abs(data.days)} day(s) ago</strong>` : `matures in <strong>${data.days} day(s)</strong>`}.</p>
+          <p><strong>Maturity Date:</strong> ${data.maturityDate}</p>
+          <p>Please contact us to arrange repayment or renewal.</p>
+        </div>
+        <div style="background:#1B4332;padding:15px;text-align:center;"><p style="color:#fff;margin:0;font-size:12px;">© ${new Date().getFullYear()} Qardan Hasana</p></div>
+      </div>`,
+  }),
+
   documentUploaded: (data) => ({
     subject: `Document Uploaded for Review - Qardan Hasana`,
     html: `

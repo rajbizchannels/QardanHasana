@@ -10,5 +10,6 @@ router.put('/:id', authenticate, ctrl.updateUser);
 router.delete('/:id', authenticate, ctrl.deleteUser);
 router.put('/:id/roles', authenticate, requireRole('admin'), ctrl.assignRoles);
 router.put('/:id/password', authenticate, ctrl.changePassword);
+router.put('/:id/notification-preferences', authenticate, ctrl.updateNotificationPreferences);
 
 module.exports = router;

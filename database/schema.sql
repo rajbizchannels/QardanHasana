@@ -63,6 +63,8 @@ CREATE TABLE IF NOT EXISTS users (
     first_name VARCHAR(100) NOT NULL,
     last_name VARCHAR(100) NOT NULL,
     phone VARCHAR(20),
+    whatsapp VARCHAR(20),
+    notification_preferences JSONB DEFAULT '{}'::jsonb,
     date_of_birth DATE,
     gender VARCHAR(10),
     profile_photo VARCHAR(500),
