@@ -23,6 +23,7 @@ import RBACPage from './pages/RBACPage';
 import AuditLogsPage from './pages/AuditLogsPage';
 import AccountsPage from './pages/AccountsPage';
 import DepositsPage from './pages/DepositsPage';
+import GuarantorPage from './pages/GuarantorPage';
 import NotFoundPage from './pages/NotFoundPage';
 import LoadingSpinner from './components/common/LoadingSpinner';
 
@@ -79,6 +80,7 @@ export default function App() {
         <Route path="approvals" element={<ProtectedRoute roles={['admin', 'accountant']}><ApprovalsPage /></ProtectedRoute>} />
         <Route path="documents" element={<DocumentsPage />} />
         <Route path="deposits" element={<ProtectedRoute roles={['admin', 'accountant']}><DepositsPage /></ProtectedRoute>} />
+        <Route path="guarantors" element={<ProtectedRoute roles={['admin', 'accountant']}><GuarantorPage /></ProtectedRoute>} />
         <Route path="settings" element={<SettingsPage />} />
         <Route path="rbac" element={<ProtectedRoute roles={['admin']}><RBACPage /></ProtectedRoute>} />
         <Route path="audit" element={<ProtectedRoute roles={['admin', 'accountant']}><AuditLogsPage /></ProtectedRoute>} />

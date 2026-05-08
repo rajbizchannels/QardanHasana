@@ -3,6 +3,11 @@ const { sendEmail } = require('../utils/email');
 const audit = require('../utils/audit');
 const { notify } = require('../utils/notificationService');
 
+const getCurrency = async () => {
+  const r = await query(`SELECT value FROM settings WHERE key = 'currency'`);
+  return r.rows[0]?.value || 'INR';
+};
+
 exports.getApprovals = async (req, res) => {
   try {
     const { page = 1, limit = 20, status = 'pending', type } = req.query;
@@ -158,6 +163,7 @@ exports.reviewApproval = async (req, res) => {
       const loanRes = await query(`SELECT * FROM loans WHERE id = $1`, [approval.reference_id]);
       const loan = loanRes.rows[0];
       if (loan) {
+        const currency = await getCurrency();
         if (newStatus === 'approved') {
           await query(
             `UPDATE loans SET status = 'approved', approved_by = $1, approved_at = NOW(), updated_at = NOW() WHERE id = $2`,
@@ -179,7 +185,7 @@ exports.reviewApproval = async (req, res) => {
               message: `Your loan application ${loan.loan_number} has been approved.`,
               notifType: 'success', referenceType: 'loan', referenceId: loan.id,
               emailTemplate: 'loanUpdate',
-              emailData: { loanNumber: loan.loan_number, status: 'approved', amount: loan.principal_amount },
+              emailData: { loanNumber: loan.loan_number, status: 'approved', amount: loan.principal_amount, currency },
             });
           }
         } else {
@@ -199,7 +205,7 @@ exports.reviewApproval = async (req, res) => {
               message: `Your loan application ${loan.loan_number} was not approved.${notes ? ` Notes: ${notes}` : ''}`,
               notifType: 'error', referenceType: 'loan', referenceId: loan.id,
               emailTemplate: 'loanUpdate',
-              emailData: { loanNumber: loan.loan_number, status: 'rejected', amount: loan.principal_amount, notes },
+              emailData: { loanNumber: loan.loan_number, status: 'rejected', amount: loan.principal_amount, currency, notes },
             });
           }
         }

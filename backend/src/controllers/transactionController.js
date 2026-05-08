@@ -3,6 +3,11 @@ const { sendEmail } = require('../utils/email');
 const audit = require('../utils/audit');
 const { notify } = require('../utils/notificationService');
 
+const getCurrency = async () => {
+  const r = await query(`SELECT value FROM settings WHERE key = 'currency'`);
+  return r.rows[0]?.value || 'INR';
+};
+
 const generateTxnNumber = () => `TXN${Date.now().toString().slice(-8)}`;
 
 exports.getTransactions = async (req, res) => {
@@ -104,8 +109,7 @@ exports.createTransaction = async (req, res) => {
     } = req.body;
 
     const txnNumber = generateTxnNumber();
-    const currRes = await query(`SELECT value FROM settings WHERE key = 'currency'`);
-    const currency = currRes.rows[0]?.value || 'INR';
+    const currency = await getCurrency();
 
     const isAdmin = req.user.roles.some(r => ['admin', 'accountant'].includes(r));
     const status = isAdmin ? 'approved' : 'pending';
@@ -305,8 +309,7 @@ exports.deleteTransaction = async (req, res) => {
 };
 
 async function postToLedger(txn, approvedBy) {
-  const currRes = await query(`SELECT value FROM settings WHERE key = 'currency'`);
-  const currency = currRes.rows[0]?.value || 'INR';
+  const currency = await getCurrency();
 
   if (txn.from_account_id) {
     const fromBalance = await query(
@@ -353,5 +356,38 @@ async function postToLedger(txn, approvedBy) {
         );
       }
     }
+    const nameRes = await query(`SELECT first_name, last_name FROM users WHERE id = $1`, [txn.from_account_id]);
+    const name = nameRes.rows[0] ? `${nameRes.rows[0].first_name} ${nameRes.rows[0].last_name}` : '';
+    const maturityDate = txn.maturity_date
+      ? new Date(txn.maturity_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+      : null;
+    await notify({
+      userId: txn.from_account_id,
+      type: 'transaction_posted',
+      title: `Deposit Acknowledged — ${txn.transaction_number}`,
+      message: `Your deposit of ${currency} ${txn.amount} has been recorded.${maturityDate ? ` Maturity: ${maturityDate}.` : ''}`,
+      notifType: 'success', referenceType: 'transaction', referenceId: txn.id,
+      emailTemplate: 'depositAcknowledgement',
+      emailData: { name, amount: txn.amount, currency, transactionNumber: txn.transaction_number, maturityDate, description: txn.description },
+    });
+  }
+
+  if (txn.type === 'loan_disbursement' && txn.to_account_id) {
+    let loanNumber = '';
+    if (txn.loan_id) {
+      const loanRes = await query(`SELECT loan_number FROM loans WHERE id = $1`, [txn.loan_id]);
+      loanNumber = loanRes.rows[0]?.loan_number || '';
+    }
+    const nameRes = await query(`SELECT first_name, last_name FROM users WHERE id = $1`, [txn.to_account_id]);
+    const name = nameRes.rows[0] ? `${nameRes.rows[0].first_name} ${nameRes.rows[0].last_name}` : '';
+    await notify({
+      userId: txn.to_account_id,
+      type: 'transaction_posted',
+      title: `Loan Disbursement Received — ${txn.transaction_number}`,
+      message: `A loan disbursement of ${currency} ${txn.amount} has been credited to your account.`,
+      notifType: 'success', referenceType: 'transaction', referenceId: txn.id,
+      emailTemplate: 'loanDisbursement',
+      emailData: { name, amount: txn.amount, currency, transactionNumber: txn.transaction_number, loanNumber, description: txn.description },
+    });
   }
 }

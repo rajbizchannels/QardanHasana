@@ -407,6 +407,45 @@ exports.getAllDeposits = async (req, res) => {
   }
 };
 
+exports.getGuarantors = async (req, res) => {
+  try {
+    const { page = 1, limit = 20 } = req.query;
+    const offset = (page - 1) * limit;
+
+    const countRes = await query(`SELECT COUNT(*) FROM guarantor_profiles`);
+
+    const result = await query(
+      `SELECT gp.id, gp.user_id, gp.guarantor_number, gp.status,
+              u.first_name || ' ' || u.last_name AS name,
+              u.its_number, u.phone, u.email,
+              COUNT(lg.id) AS total_guarantees,
+              COUNT(lg.id) FILTER (WHERE l.status IN ('active', 'approved', 'under_review', 'pending')) AS active_guarantees,
+              COALESCE(SUM(l.principal_amount) FILTER (WHERE l.status IN ('active', 'approved')), 0) AS active_guaranteed_value,
+              COALESCE(SUM(l.principal_amount), 0) AS total_guaranteed_value
+       FROM guarantor_profiles gp
+       JOIN users u ON gp.user_id = u.id
+       LEFT JOIN loan_guarantors lg ON gp.id = lg.guarantor_profile_id
+       LEFT JOIN loans l ON lg.loan_id = l.id
+       GROUP BY gp.id, u.id
+       ORDER BY u.first_name, u.last_name
+       LIMIT $1 OFFSET $2`,
+      [limit, offset]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        guarantors: result.rows,
+        total: parseInt(countRes.rows[0].count),
+        page: parseInt(page),
+        totalPages: Math.ceil(parseInt(countRes.rows[0].count) / limit),
+      },
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 exports.getProfilesForSelect = async (req, res) => {
   try {
     const [creditorsRes, debtorsRes, guarantorsRes] = await Promise.all([

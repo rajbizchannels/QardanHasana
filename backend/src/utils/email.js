@@ -174,8 +174,47 @@ const emailTemplates = {
       </div>`,
   }),
 
-  depositMaturity: (data) => ({
-    subject: `Deposit Maturity ${data.days < 0 ? 'Overdue' : `in ${data.days} Day(s)`} — Qardan Hasana`,
+  loanDisbursement: (data) => ({
+    subject: `Loan Disbursement Received — ${data.transactionNumber} - Qardan Hasana`,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+        <div style="background:#1B4332;padding:20px;text-align:center;"><h1 style="color:#D4AF37;margin:0;">Qardan Hasana</h1></div>
+        <div style="padding:30px;background:#f9f9f9;">
+          <h2 style="color:#1B4332;">✓ Loan Disbursement Received</h2>
+          <p>Dear ${data.name || 'Member'},</p>
+          <p>A loan disbursement has been credited to your account.</p>
+          <table style="width:100%;border-collapse:collapse;margin-top:16px;">
+            <tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;color:#6b7280;">Transaction #</td><td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:bold;">${data.transactionNumber}</td></tr>
+            ${data.loanNumber ? `<tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;color:#6b7280;">Loan #</td><td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:bold;">${data.loanNumber}</td></tr>` : ''}
+            <tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;color:#6b7280;">Amount</td><td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:bold;color:#1B4332;">${data.currency} ${data.amount}</td></tr>
+            ${data.description ? `<tr><td style="padding:8px;color:#6b7280;">Description</td><td style="padding:8px;">${data.description}</td></tr>` : ''}
+          </table>
+        </div>
+        <div style="background:#1B4332;padding:15px;text-align:center;"><p style="color:#fff;margin:0;font-size:12px;">© ${new Date().getFullYear()} Qardan Hasana</p></div>
+      </div>`,
+  }),
+
+  depositAcknowledgement: (data) => ({
+    subject: `Deposit Acknowledged — ${data.transactionNumber} - Qardan Hasana`,
+    html: `
+      <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
+        <div style="background:#1B4332;padding:20px;text-align:center;"><h1 style="color:#D4AF37;margin:0;">Qardan Hasana</h1></div>
+        <div style="padding:30px;background:#f9f9f9;">
+          <h2 style="color:#1B4332;">✓ Deposit Acknowledged</h2>
+          <p>Dear ${data.name || 'Member'},</p>
+          <p>Your deposit has been received and recorded successfully.</p>
+          <table style="width:100%;border-collapse:collapse;margin-top:16px;">
+            <tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;color:#6b7280;">Transaction #</td><td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:bold;">${data.transactionNumber}</td></tr>
+            <tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;color:#6b7280;">Amount</td><td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:bold;color:#1B4332;">${data.currency} ${data.amount}</td></tr>
+            ${data.maturityDate ? `<tr><td style="padding:8px;border-bottom:1px solid #e5e7eb;color:#6b7280;">Maturity Date</td><td style="padding:8px;border-bottom:1px solid #e5e7eb;font-weight:bold;">${data.maturityDate}</td></tr>` : ''}
+            ${data.description ? `<tr><td style="padding:8px;color:#6b7280;">Description</td><td style="padding:8px;">${data.description}</td></tr>` : ''}
+          </table>
+        </div>
+        <div style="background:#1B4332;padding:15px;text-align:center;"><p style="color:#fff;margin:0;font-size:12px;">© ${new Date().getFullYear()} Qardan Hasana</p></div>
+      </div>`,
+  }),
+
+  depositMaturity: (data) => ({    subject: `Deposit Maturity ${data.days < 0 ? 'Overdue' : `in ${data.days} Day(s)`} — Qardan Hasana`,
     html: `
       <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;">
         <div style="background:#1B4332;padding:20px;text-align:center;"><h1 style="color:#D4AF37;margin:0;">Qardan Hasana</h1></div>

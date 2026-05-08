@@ -122,7 +122,7 @@ export default function LoansPage() {
       setShowCreate(false);
       setForm(defaultLoan);
       fetchLoans();
-    } catch { toast.error('Failed to submit loan application'); }
+    } catch (err) { toast.error(err.response?.data?.message || 'Failed to submit loan application'); }
     finally { setCreating(false); }
   };
 

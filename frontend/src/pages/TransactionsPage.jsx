@@ -330,7 +330,15 @@ export default function TransactionsPage() {
           {['loan_disbursement', 'loan_repayment'].includes(form.type) && (
             <div>
               <label className="input-label">Related Loan</label>
-              <select className="input-field" value={form.loanId} onChange={(e) => setForm({ ...form, loanId: e.target.value })}>
+              <select className="input-field" value={form.loanId} onChange={(e) => {
+                const loanId = e.target.value;
+                const selected = loans.find(l => l.id === loanId);
+                setForm(prev => ({
+                  ...prev,
+                  loanId,
+                  amount: prev.type === 'loan_repayment' && selected ? String(selected.monthly_installment) : prev.amount,
+                }));
+              }}>
                 <option value="">Select loan...</option>
                 {loans.map(l => <option key={l.id} value={l.id}>{l.loan_number} — {l.debtor_name} — {fmt(l.outstanding_balance)} outstanding</option>)}
               </select>
@@ -409,7 +417,15 @@ export default function TransactionsPage() {
           {['loan_disbursement', 'loan_repayment'].includes(editForm.type) && (
             <div>
               <label className="input-label">Related Loan</label>
-              <select className="input-field" value={editForm.loanId} onChange={(e) => setEditForm({ ...editForm, loanId: e.target.value })}>
+              <select className="input-field" value={editForm.loanId} onChange={(e) => {
+                const loanId = e.target.value;
+                const selected = loans.find(l => l.id === loanId);
+                setEditForm(prev => ({
+                  ...prev,
+                  loanId,
+                  amount: prev.type === 'loan_repayment' && selected ? String(selected.monthly_installment) : prev.amount,
+                }));
+              }}>
                 <option value="">Select loan...</option>
                 {loans.map(l => <option key={l.id} value={l.id}>{l.loan_number} — {l.debtor_name} — {fmt(l.outstanding_balance)} outstanding</option>)}
               </select>

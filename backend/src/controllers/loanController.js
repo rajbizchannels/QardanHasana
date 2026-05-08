@@ -3,6 +3,11 @@ const { sendEmail } = require('../utils/email');
 const audit = require('../utils/audit');
 const { notify } = require('../utils/notificationService');
 
+const getCurrency = async () => {
+  const r = await query(`SELECT value FROM settings WHERE key = 'currency'`);
+  return r.rows[0]?.value || 'INR';
+};
+
 const generateLoanNumber = () => `LN${Date.now().toString().slice(-8)}`;
 
 exports.getLoans = async (req, res) => {
@@ -123,6 +128,17 @@ exports.createLoan = async (req, res) => {
 
     const loanNumber = generateLoanNumber();
 
+    const existingLoan = await query(
+      `SELECT loan_number, status FROM loans WHERE debtor_id = $1 AND status NOT IN ('completed', 'rejected') LIMIT 1`,
+      [debtorId]
+    );
+    if (existingLoan.rows[0]) {
+      return res.status(409).json({
+        success: false,
+        message: `An active loan (${existingLoan.rows[0].loan_number}) already exists for this debtor. Please repay the current loan before applying for a new one.`,
+      });
+    }
+
     const loanRes = await query(
       `INSERT INTO loans (loan_number, debtor_id, creditor_id, principal_amount, outstanding_balance,
         first_installment_date, monthly_installment, total_installments, security_description,
@@ -197,6 +213,7 @@ exports.updateLoan = async (req, res) => {
           [loanRes.rows[0].principal_amount, loanRes.rows[0].debtor_id]
         );
 
+        const currency = await getCurrency();
         const debtorUser = await query(
           `SELECT u.id, u.first_name, u.last_name FROM users u JOIN debtor_profiles dp ON u.id = dp.user_id WHERE dp.id = $1`,
           [loanRes.rows[0].debtor_id]
@@ -209,12 +226,13 @@ exports.updateLoan = async (req, res) => {
             message: `Your loan application ${loanRes.rows[0].loan_number} has been approved.`,
             notifType: 'success', referenceType: 'loan', referenceId: id,
             emailTemplate: 'loanUpdate',
-            emailData: { loanNumber: loanRes.rows[0].loan_number, status: 'approved', amount: loanRes.rows[0].principal_amount, currency: 'INR' },
+            emailData: { loanNumber: loanRes.rows[0].loan_number, status: 'approved', amount: loanRes.rows[0].principal_amount, currency },
           });
         }
       }
       if (status === 'rejected') {
         if (rejectionReason) { params.push(rejectionReason); updateFields.push(`rejection_reason = $${params.length}`); }
+        const currency = await getCurrency();
         const debtorUser = await query(
           `SELECT u.id FROM users u JOIN debtor_profiles dp ON u.id = dp.user_id WHERE dp.id = $1`,
           [loanRes.rows[0].debtor_id]
@@ -227,7 +245,7 @@ exports.updateLoan = async (req, res) => {
             message: `Your loan application ${loanRes.rows[0].loan_number} was not approved.${rejectionReason ? ` Reason: ${rejectionReason}` : ''}`,
             notifType: 'error', referenceType: 'loan', referenceId: id,
             emailTemplate: 'loanUpdate',
-            emailData: { loanNumber: loanRes.rows[0].loan_number, status: 'rejected', amount: loanRes.rows[0].principal_amount, currency: 'INR', notes: rejectionReason },
+            emailData: { loanNumber: loanRes.rows[0].loan_number, status: 'rejected', amount: loanRes.rows[0].principal_amount, currency, notes: rejectionReason },
           });
         }
       }
