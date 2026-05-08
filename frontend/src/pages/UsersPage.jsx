@@ -77,7 +77,7 @@ export default function UsersPage() {
     }
   };
 
-  const ROLE_OPTS = ['admin', 'accountant', 'member', 'creditor', 'debtor', 'viewer'];
+  const ROLE_OPTS = ['admin', 'accountant', 'member', 'creditor', 'debtor', 'guarantor', 'viewer'];
 
   return (
     <div className="space-y-6 animate-fade-in">

@@ -137,6 +137,29 @@ exports.createUser = async (req, res) => {
       }
     }
 
+    const genNumber = (prefix) => `${prefix}${Date.now().toString().slice(-8)}`;
+    if (userRoles.includes('creditor')) {
+      const ex = await query(`SELECT id FROM creditor_profiles WHERE user_id = $1`, [newUser.id]);
+      if (!ex.rows[0]) await query(
+        `INSERT INTO creditor_profiles (user_id, creditor_number, credit_limit, available_credit, created_by) VALUES ($1, $2, 0, 0, $3)`,
+        [newUser.id, genNumber('CR'), req.user?.id || null]
+      );
+    }
+    if (userRoles.includes('debtor')) {
+      const ex = await query(`SELECT id FROM debtor_profiles WHERE user_id = $1`, [newUser.id]);
+      if (!ex.rows[0]) await query(
+        `INSERT INTO debtor_profiles (user_id, debtor_number, created_by) VALUES ($1, $2, $3)`,
+        [newUser.id, genNumber('DB'), req.user?.id || null]
+      );
+    }
+    if (userRoles.includes('guarantor')) {
+      const ex = await query(`SELECT id FROM guarantor_profiles WHERE user_id = $1`, [newUser.id]);
+      if (!ex.rows[0]) await query(
+        `INSERT INTO guarantor_profiles (user_id, guarantor_number, created_by) VALUES ($1, $2, $3)`,
+        [newUser.id, genNumber('GT'), req.user?.id || null]
+      );
+    }
+
     await sendEmail({
       to: email,
       templateName: 'welcome',

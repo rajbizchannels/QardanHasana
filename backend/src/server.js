@@ -95,6 +95,7 @@ const { query: dbQuery } = require('./config/database');
     `ALTER TABLE creditor_profiles ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`,
     `ALTER TABLE debtor_profiles ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`,
     `ALTER TABLE guarantor_profiles ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE`,
+    `INSERT INTO roles (name, display_name, description, is_system) VALUES ('guarantor', 'Guarantor', 'Can act as guarantor for loans', true) ON CONFLICT (name) DO NOTHING`,
   ];
   for (const sql of migrations) {
     try { await dbQuery(sql); } catch (e) { console.warn('Migration warning:', e.message); }
