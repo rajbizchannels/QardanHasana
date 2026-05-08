@@ -14,8 +14,8 @@ const TXN_TYPES = ['loan_disbursement', 'loan_repayment', 'deposit', 'withdrawal
 const ACCOUNT_CONFIG = {
   loan_disbursement: { from: 'creditor', to: 'debtor',   fromLabel: 'From (Creditor)',  toLabel: 'To (Debtor)'    },
   loan_repayment:    { from: 'debtor',   to: 'creditor', fromLabel: 'From (Debtor)',    toLabel: 'To (Creditor)'  },
-  deposit:           { from: 'creditor', to: null,        fromLabel: 'From (Creditor)',  toLabel: null             },
-  withdrawal:        { from: null,       to: 'creditor',  fromLabel: null,               toLabel: 'To (Creditor)'  },
+  deposit:           { from: 'creditor', to: 'creditor',  fromLabel: 'From (Creditor)',  toLabel: 'To (Creditor)'  },
+  withdrawal:        { from: 'creditor', to: 'creditor',  fromLabel: 'From (Creditor)',  toLabel: 'To (Creditor)'  },
   transfer:          { from: 'both',     to: 'both',      fromLabel: 'From',             toLabel: 'To'             },
   adjustment:        { from: 'both',     to: 'both',      fromLabel: 'From (optional)',   toLabel: 'To (optional)'  },
 };
