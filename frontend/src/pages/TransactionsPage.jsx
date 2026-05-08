@@ -210,30 +210,32 @@ export default function TransactionsPage() {
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            {config.fromLabel && (
-              <div>
-                <label className="input-label">{config.fromLabel}</label>
-                <select className="input-field" value={form.fromAccountId}
-                  onChange={(e) => setForm({ ...form, fromAccountId: e.target.value })}
-                  required={config.from && config.from !== 'both'}>
-                  <option value="">Select...</option>
-                  {getOptions(config.from).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </div>
-            )}
-            {config.toLabel && (
-              <div>
-                <label className="input-label">{config.toLabel}</label>
-                <select className="input-field" value={form.toAccountId}
-                  onChange={(e) => setForm({ ...form, toAccountId: e.target.value })}
-                  required={config.to && config.to !== 'both'}>
-                  <option value="">Select...</option>
-                  {getOptions(config.to).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                </select>
-              </div>
-            )}
-          </div>
+          {isAdmin && (
+            <div className="grid grid-cols-2 gap-3">
+              {config.fromLabel && (
+                <div>
+                  <label className="input-label">{config.fromLabel}</label>
+                  <select className="input-field" value={form.fromAccountId}
+                    onChange={(e) => setForm({ ...form, fromAccountId: e.target.value })}
+                    required={config.from && config.from !== 'both'}>
+                    <option value="">Select...</option>
+                    {getOptions(config.from).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+              )}
+              {config.toLabel && (
+                <div>
+                  <label className="input-label">{config.toLabel}</label>
+                  <select className="input-field" value={form.toAccountId}
+                    onChange={(e) => setForm({ ...form, toAccountId: e.target.value })}
+                    required={config.to && config.to !== 'both'}>
+                    <option value="">Select...</option>
+                    {getOptions(config.to).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
 
           <div>
             <label className="input-label">Amount *</label>
