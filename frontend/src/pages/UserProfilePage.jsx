@@ -218,7 +218,7 @@ export default function UserProfilePage({ isSelf, isNew }) {
         firstName: u.first_name || '',
         lastName: u.last_name || '',
         phone: u.phone || '',
-        whatsapp: u.whatsapp || '',
+        whatsapp: u.whatsapp || u.phone || '',
         dateOfBirth: u.date_of_birth ? u.date_of_birth.split('T')[0] : '',
         gender: u.gender || '',
         email: u.email || '',
@@ -358,7 +358,10 @@ export default function UserProfilePage({ isSelf, isNew }) {
               </div>
               <div>
                 <label className="input-label">Phone</label>
-                <input className="input-field" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} disabled={!canEdit} />
+                <input className="input-field" value={form.phone} onChange={(e) => {
+                  const newPhone = e.target.value;
+                  setForm(prev => ({ ...prev, phone: newPhone, whatsapp: prev.whatsapp === prev.phone ? newPhone : prev.whatsapp }));
+                }} disabled={!canEdit} />
               </div>
               <div>
                 <label className="input-label">WhatsApp Number</label>

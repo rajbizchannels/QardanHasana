@@ -120,9 +120,9 @@ exports.createUser = async (req, res) => {
     const passwordHash = await bcrypt.hash(password || itsNumber, 12);
 
     const userRes = await query(
-      `INSERT INTO users (its_number, email, password_hash, first_name, last_name, phone, date_of_birth, gender)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [itsNumber, email, passwordHash, firstName, lastName, phone || null, dateOfBirth || null, gender || null]
+      `INSERT INTO users (its_number, email, password_hash, first_name, last_name, phone, whatsapp, date_of_birth, gender)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *`,
+      [itsNumber, email, passwordHash, firstName, lastName, phone || null, phone || null, dateOfBirth || null, gender || null]
     );
 
     const newUser = userRes.rows[0];

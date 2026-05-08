@@ -157,7 +157,7 @@ export default function LoansPage() {
                       <td>
                         <div className="flex items-center gap-2">
                           <Link to={`/loans/${l.id}`} className="text-primary-800 hover:underline text-sm">View</Link>
-                          {isAdmin && ['pending', 'under_review', 'rejected'].includes(l.status) && (
+                          {isAdmin && (
                             <button onClick={() => setShowDelete(l)} className="text-red-500 hover:text-red-700">
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -278,6 +278,11 @@ export default function LoansPage() {
         <p>Delete loan <strong>{showDelete?.loan_number}</strong>?</p>
         <p className="text-sm text-dark-400 mt-1">Debtor: {showDelete?.debtor_name}</p>
         <p className="text-sm text-dark-400">Amount: {showDelete?.principal_amount ? fmt(showDelete.principal_amount) : ''}</p>
+        {showDelete && !['pending', 'under_review', 'rejected'].includes(showDelete.status) && (
+          <p className="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mt-2">
+            This loan has status <strong>{showDelete.status}</strong>. Associated transactions and ledger entries will be unlinked but not deleted.
+          </p>
+        )}
         <p className="text-sm text-red-600 mt-2">This action cannot be undone.</p>
       </Modal>
     </div>

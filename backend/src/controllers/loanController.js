@@ -1,4 +1,4 @@
-const { query } = require('../config/database');
+const { query, getClient } = require('../config/database');
 const { sendEmail } = require('../utils/email');
 const audit = require('../utils/audit');
 const { notify } = require('../utils/notificationService');
@@ -252,22 +252,28 @@ exports.updateLoan = async (req, res) => {
 };
 
 exports.deleteLoan = async (req, res) => {
+  const client = await getClient();
   try {
     const { id } = req.params;
 
-    const loanRes = await query(`SELECT loan_number, status FROM loans WHERE id = $1`, [id]);
+    const loanRes = await client.query(`SELECT loan_number, status FROM loans WHERE id = $1`, [id]);
     if (!loanRes.rows[0]) return res.status(404).json({ success: false, message: 'Loan not found' });
 
-    const { status, loan_number } = loanRes.rows[0];
-    const deletable = ['pending', 'under_review', 'rejected'];
-    if (!deletable.includes(status)) {
-      return res.status(400).json({ success: false, message: `Cannot delete loan with status '${status}'. Only pending, under review, or rejected loans can be deleted.` });
-    }
+    const { loan_number } = loanRes.rows[0];
 
-    await query(`DELETE FROM loans WHERE id = $1`, [id]);
+    await client.query('BEGIN');
+    await client.query(`UPDATE transactions SET loan_id = NULL WHERE loan_id = $1`, [id]);
+    await client.query(`UPDATE ledger_entries SET loan_id = NULL WHERE loan_id = $1`, [id]);
+    await client.query(`UPDATE documents SET loan_id = NULL WHERE loan_id = $1`, [id]);
+    await client.query(`DELETE FROM loans WHERE id = $1`, [id]);
+    await client.query('COMMIT');
+
     await audit({ userId: req.user.id, action: 'LOAN_DELETED', entityType: 'loan', entityId: id, newValues: { loan_number }, ipAddress: req.ip });
     res.json({ success: true });
   } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
     res.status(500).json({ success: false, message: err.message });
+  } finally {
+    client.release();
   }
 };
