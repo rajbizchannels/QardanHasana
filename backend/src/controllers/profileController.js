@@ -409,7 +409,7 @@ exports.getAllDeposits = async (req, res) => {
 
 exports.getProfilesForSelect = async (req, res) => {
   try {
-    const [creditorsRes, debtorsRes] = await Promise.all([
+    const [creditorsRes, debtorsRes, guarantorsRes] = await Promise.all([
       query(
         `SELECT cp.id, cp.user_id, cp.creditor_number,
                 u.first_name || ' ' || u.last_name AS name, u.its_number
@@ -424,8 +424,27 @@ exports.getProfilesForSelect = async (req, res) => {
          JOIN users u ON dp.user_id = u.id
          ORDER BY u.first_name, u.last_name`
       ),
+      query(
+        `SELECT gp.id, gp.user_id, gp.guarantor_number,
+                u.first_name || ' ' || u.last_name AS name, u.its_number,
+                u.phone, u.email,
+                NULLIF(TRIM(CONCAT_WS(', ',
+                  NULLIF(u.address_line1,''), NULLIF(u.address_line2,''),
+                  NULLIF(u.city,''), NULLIF(u.state,''), NULLIF(u.postal_code,'')
+                )),'') AS address
+         FROM guarantor_profiles gp
+         JOIN users u ON gp.user_id = u.id
+         ORDER BY u.first_name, u.last_name`
+      ),
     ]);
-    res.json({ success: true, data: { creditors: creditorsRes.rows, debtors: debtorsRes.rows } });
+    res.json({
+      success: true,
+      data: {
+        creditors: creditorsRes.rows,
+        debtors: debtorsRes.rows,
+        guarantors: guarantorsRes.rows,
+      },
+    });
   } catch (err) {
     console.error('[getProfilesForSelect]', err.message);
     res.status(500).json({ success: false, message: err.message });

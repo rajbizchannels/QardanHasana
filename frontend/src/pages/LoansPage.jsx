@@ -14,7 +14,7 @@ import toast from 'react-hot-toast';
 const defaultLoan = {
   debtorId: '', principalAmount: '', firstInstallmentDate: '', monthlyInstallment: '',
   totalInstallments: '', securityDescription: '', purpose: '', notes: '',
-  guarantors: [{ name: '', itsNumber: '', phone: '', address: '', email: '' }],
+  guarantors: [{ guarantorProfileId: '', name: '', itsNumber: '', phone: '', address: '', email: '' }],
 };
 
 export default function LoansPage() {
@@ -32,11 +32,12 @@ export default function LoansPage() {
   const [form, setForm] = useState(defaultLoan);
   const [creating, setCreating] = useState(false);
   const [debtors, setDebtors] = useState([]);
+  const [guarantorProfiles, setGuarantorProfiles] = useState([]);
   const [showDelete, setShowDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => { fetchLoans(); }, [page, statusFilter]);
-  useEffect(() => { if (showCreate && isAdmin) fetchDebtors(); }, [showCreate]);
+  useEffect(() => { if (showCreate && isAdmin) fetchProfiles(); }, [showCreate]);
 
   const fetchLoans = async () => {
     setLoading(true);
@@ -51,15 +52,36 @@ export default function LoansPage() {
     finally { setLoading(false); }
   };
 
-  const fetchDebtors = async () => {
+  const fetchProfiles = async () => {
     try {
-      const res = await api.get('/profiles?type=debtors');
+      const res = await api.get('/profiles/for-select');
       setDebtors(res.data.data.debtors || []);
-    } catch {}
+      setGuarantorProfiles(res.data.data.guarantors || []);
+    } catch { toast.error('Failed to load profiles'); }
   };
 
-  const addGuarantor = () => setForm({ ...form, guarantors: [...form.guarantors, { name: '', itsNumber: '', phone: '', address: '', email: '' }] });
+  const emptyGuarantor = () => ({ guarantorProfileId: '', name: '', itsNumber: '', phone: '', address: '', email: '' });
+  const addGuarantor = () => setForm({ ...form, guarantors: [...form.guarantors, emptyGuarantor()] });
   const removeGuarantor = (i) => setForm({ ...form, guarantors: form.guarantors.filter((_, idx) => idx !== i) });
+
+  const selectGuarantorProfile = (i, profileId) => {
+    const profile = guarantorProfiles.find(g => g.id === profileId);
+    const gs = [...form.guarantors];
+    if (profile) {
+      gs[i] = {
+        guarantorProfileId: profile.id,
+        name: profile.name,
+        itsNumber: profile.its_number || '',
+        phone: profile.phone || '',
+        email: profile.email || '',
+        address: profile.address || '',
+      };
+    } else {
+      gs[i] = emptyGuarantor();
+    }
+    setForm({ ...form, guarantors: gs });
+  };
+
   const updateGuarantor = (i, field, val) => {
     const gs = [...form.guarantors];
     gs[i] = { ...gs[i], [field]: val };
@@ -239,6 +261,11 @@ export default function LoansPage() {
               <h4 className="font-semibold text-dark-800">Guarantors</h4>
               <button type="button" onClick={addGuarantor} className="btn-outline btn-sm">+ Add Guarantor</button>
             </div>
+            {guarantorProfiles.length === 0 && (
+              <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mb-3">
+                No guarantor profiles found. Go to <strong>Accounts</strong> to create them first.
+              </p>
+            )}
             {form.guarantors.map((g, i) => (
               <div key={i} className="border border-dark-100 rounded-lg p-3 mb-3 last:mb-0 space-y-3">
                 <div className="flex justify-between items-center">
@@ -247,13 +274,31 @@ export default function LoansPage() {
                     <button type="button" onClick={() => removeGuarantor(i)} className="text-red-500 text-sm hover:underline">Remove</button>
                   )}
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div><label className="input-label text-xs">Full Name *</label><input className="input-field" required value={g.name} onChange={(e) => updateGuarantor(i, 'name', e.target.value)} /></div>
-                  <div><label className="input-label text-xs">ITS Number</label><input className="input-field" value={g.itsNumber} onChange={(e) => updateGuarantor(i, 'itsNumber', e.target.value)} /></div>
-                  <div><label className="input-label text-xs">Phone *</label><input className="input-field" required value={g.phone} onChange={(e) => updateGuarantor(i, 'phone', e.target.value)} /></div>
-                  <div><label className="input-label text-xs">Email</label><input type="email" className="input-field" value={g.email} onChange={(e) => updateGuarantor(i, 'email', e.target.value)} /></div>
-                  <div className="sm:col-span-2"><label className="input-label text-xs">Address *</label><input className="input-field" required value={g.address} onChange={(e) => updateGuarantor(i, 'address', e.target.value)} /></div>
+                <div>
+                  <label className="input-label text-xs">Select Guarantor Profile *</label>
+                  <select
+                    className="input-field"
+                    required
+                    value={g.guarantorProfileId}
+                    onChange={(e) => selectGuarantorProfile(i, e.target.value)}
+                  >
+                    <option value="">Choose guarantor...</option>
+                    {guarantorProfiles.map(gp => (
+                      <option key={gp.id} value={gp.id}>
+                        {gp.name} ({gp.its_number || gp.guarantor_number})
+                      </option>
+                    ))}
+                  </select>
                 </div>
+                {g.guarantorProfileId && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                    <div><label className="input-label text-xs">Full Name</label><input className="input-field bg-dark-50" value={g.name} onChange={(e) => updateGuarantor(i, 'name', e.target.value)} /></div>
+                    <div><label className="input-label text-xs">ITS Number</label><input className="input-field bg-dark-50" value={g.itsNumber} onChange={(e) => updateGuarantor(i, 'itsNumber', e.target.value)} /></div>
+                    <div><label className="input-label text-xs">Phone</label><input className="input-field bg-dark-50" value={g.phone} onChange={(e) => updateGuarantor(i, 'phone', e.target.value)} /></div>
+                    <div><label className="input-label text-xs">Email</label><input type="email" className="input-field bg-dark-50" value={g.email} onChange={(e) => updateGuarantor(i, 'email', e.target.value)} /></div>
+                    <div className="sm:col-span-2"><label className="input-label text-xs">Address</label><input className="input-field bg-dark-50" value={g.address} onChange={(e) => updateGuarantor(i, 'address', e.target.value)} /></div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
