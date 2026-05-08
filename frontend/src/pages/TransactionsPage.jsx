@@ -11,6 +11,17 @@ import toast from 'react-hot-toast';
 
 const TXN_TYPES = ['loan_disbursement', 'loan_repayment', 'deposit', 'withdrawal', 'transfer', 'adjustment'];
 
+const ACCOUNT_CONFIG = {
+  loan_disbursement: { from: 'creditor', to: 'debtor',   fromLabel: 'From (Creditor)',  toLabel: 'To (Debtor)'    },
+  loan_repayment:    { from: 'debtor',   to: 'creditor', fromLabel: 'From (Debtor)',    toLabel: 'To (Creditor)'  },
+  deposit:           { from: 'creditor', to: null,        fromLabel: 'From (Creditor)',  toLabel: null             },
+  withdrawal:        { from: null,       to: 'creditor',  fromLabel: null,               toLabel: 'To (Creditor)'  },
+  transfer:          { from: 'both',     to: 'both',      fromLabel: 'From',             toLabel: 'To'             },
+  adjustment:        { from: 'both',     to: 'both',      fromLabel: 'From (optional)',   toLabel: 'To (optional)'  },
+};
+
+const EMPTY_FORM = { type: 'loan_repayment', amount: '', description: '', fromAccountId: '', toAccountId: '', loanId: '', bankReference: '', notes: '' };
+
 export default function TransactionsPage() {
   const { user } = useSelector((s) => s.auth);
   const isAdmin = hasRole(user, 'admin', 'accountant');
@@ -23,9 +34,11 @@ export default function TransactionsPage() {
   const [filters, setFilters] = useState({ status: '', type: '', startDate: '', endDate: '' });
   const [showCreate, setShowCreate] = useState(false);
   const [showDelete, setShowDelete] = useState(null);
-  const [form, setForm] = useState({ type: 'loan_repayment', amount: '', description: '', loanId: '', bankReference: '', notes: '' });
+  const [form, setForm] = useState(EMPTY_FORM);
   const [creating, setCreating] = useState(false);
   const [loans, setLoans] = useState([]);
+  const [creditors, setCreditors] = useState([]);
+  const [debtors, setDebtors] = useState([]);
 
   useEffect(() => { fetchTxns(); }, [page, filters]);
 
@@ -42,21 +55,42 @@ export default function TransactionsPage() {
     finally { setLoading(false); }
   };
 
-  const fetchLoans = async () => {
+  const openCreate = async () => {
+    setShowCreate(true);
     try {
-      const res = await api.get('/loans?status=active&limit=50');
-      setLoans(res.data.data.loans || []);
+      const [loansRes, creditorsRes, debtorsRes] = await Promise.all([
+        api.get('/loans?status=active&limit=100'),
+        api.get('/profiles?type=creditors&limit=100'),
+        api.get('/profiles?type=debtors&limit=100'),
+      ]);
+      setLoans(loansRes.data.data.loans || []);
+      setCreditors(creditorsRes.data.data.creditors || []);
+      setDebtors(debtorsRes.data.data.debtors || []);
     } catch {}
+  };
+
+  const handleTypeChange = (type) => {
+    setForm(prev => ({ ...prev, type, fromAccountId: '', toAccountId: '' }));
   };
 
   const handleCreate = async (e) => {
     e.preventDefault();
     setCreating(true);
     try {
-      await api.post('/transactions', { ...form, fromAccountId: user.id });
+      const payload = {
+        type: form.type,
+        amount: form.amount,
+        description: form.description,
+        fromAccountId: form.fromAccountId || null,
+        toAccountId: form.toAccountId || null,
+        loanId: form.loanId || null,
+        bankReference: form.bankReference || null,
+        notes: form.notes || null,
+      };
+      await api.post('/transactions', payload);
       toast.success(isAdmin ? 'Transaction created and posted to ledger' : 'Transaction submitted for approval');
       setShowCreate(false);
-      setForm({ type: 'loan_repayment', amount: '', description: '', loanId: '', bankReference: '', notes: '' });
+      setForm(EMPTY_FORM);
       fetchTxns();
     } catch { toast.error('Failed to create transaction'); }
     finally { setCreating(false); }
@@ -81,6 +115,17 @@ export default function TransactionsPage() {
 
   const typeLabel = (t) => t?.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()) || '';
 
+  const config = ACCOUNT_CONFIG[form.type] || ACCOUNT_CONFIG.adjustment;
+
+  const getOptions = (role) => {
+    if (role === 'creditor') return creditors.map(c => ({ value: c.user_id, label: `${c.name} (${c.creditor_number || c.its_number})` }));
+    if (role === 'debtor')   return debtors.map(d => ({ value: d.user_id, label: `${d.name} (${d.debtor_number || d.its_number})` }));
+    return [
+      ...creditors.map(c => ({ value: c.user_id, label: `${c.name} — Creditor (${c.creditor_number || c.its_number})` })),
+      ...debtors.map(d => ({ value: d.user_id, label: `${d.name} — Debtor (${d.debtor_number || d.its_number})` })),
+    ];
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="page-header">
@@ -88,7 +133,7 @@ export default function TransactionsPage() {
           <h1 className="page-title">Transactions</h1>
           <p className="page-subtitle">{total} transactions</p>
         </div>
-        <button onClick={() => { setShowCreate(true); fetchLoans(); }} className="btn-primary">+ New Transaction</button>
+        <button onClick={openCreate} className="btn-primary">+ New Transaction</button>
       </div>
 
       <div className="card">
@@ -149,10 +194,10 @@ export default function TransactionsPage() {
       </div>
 
       {/* Create Modal */}
-      <Modal isOpen={showCreate} onClose={() => setShowCreate(false)} title="New Transaction"
+      <Modal isOpen={showCreate} onClose={() => { setShowCreate(false); setForm(EMPTY_FORM); }} title="New Transaction"
         footer={
           <div className="flex justify-end gap-2">
-            <button onClick={() => setShowCreate(false)} className="btn-outline">Cancel</button>
+            <button onClick={() => { setShowCreate(false); setForm(EMPTY_FORM); }} className="btn-outline">Cancel</button>
             <button onClick={handleCreate} disabled={creating} className="btn-primary">{creating ? 'Creating...' : 'Create Transaction'}</button>
           </div>
         }
@@ -160,10 +205,36 @@ export default function TransactionsPage() {
         <form onSubmit={handleCreate} className="space-y-4">
           <div>
             <label className="input-label">Transaction Type *</label>
-            <select className="input-field" required value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>
+            <select className="input-field" required value={form.type} onChange={(e) => handleTypeChange(e.target.value)}>
               {TXN_TYPES.map(t => <option key={t} value={t}>{typeLabel(t)}</option>)}
             </select>
           </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {config.fromLabel && (
+              <div>
+                <label className="input-label">{config.fromLabel}</label>
+                <select className="input-field" value={form.fromAccountId}
+                  onChange={(e) => setForm({ ...form, fromAccountId: e.target.value })}
+                  required={config.from && config.from !== 'both'}>
+                  <option value="">Select...</option>
+                  {getOptions(config.from).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+            )}
+            {config.toLabel && (
+              <div>
+                <label className="input-label">{config.toLabel}</label>
+                <select className="input-field" value={form.toAccountId}
+                  onChange={(e) => setForm({ ...form, toAccountId: e.target.value })}
+                  required={config.to && config.to !== 'both'}>
+                  <option value="">Select...</option>
+                  {getOptions(config.to).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+
           <div>
             <label className="input-label">Amount *</label>
             <input type="number" className="input-field" required min="1" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
@@ -177,7 +248,7 @@ export default function TransactionsPage() {
               <label className="input-label">Related Loan</label>
               <select className="input-field" value={form.loanId} onChange={(e) => setForm({ ...form, loanId: e.target.value })}>
                 <option value="">Select loan...</option>
-                {loans.map(l => <option key={l.id} value={l.id}>{l.loan_number} — {fmt(l.outstanding_balance)} outstanding</option>)}
+                {loans.map(l => <option key={l.id} value={l.id}>{l.loan_number} — {l.debtor_name} — {fmt(l.outstanding_balance)} outstanding</option>)}
               </select>
             </div>
           )}
@@ -204,8 +275,8 @@ export default function TransactionsPage() {
       >
         <p className="text-dark-600">
           {isAdmin
-            ? `Are you sure you want to delete transaction <strong>${showDelete?.transaction_number}</strong>?`
-            : `Submit a deletion request for transaction <strong>${showDelete?.transaction_number}</strong>? Admin approval required.`}
+            ? `Are you sure you want to delete transaction ${showDelete?.transaction_number}?`
+            : `Submit a deletion request for transaction ${showDelete?.transaction_number}? Admin approval required.`}
         </p>
         <p className="text-sm text-dark-400 mt-2">Amount: {fmt(showDelete?.amount)}</p>
       </Modal>
