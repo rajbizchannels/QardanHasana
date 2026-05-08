@@ -59,13 +59,22 @@ export default function TransactionsPage() {
   };
 
   const loadFormData = async () => {
-    await Promise.allSettled([
-      api.get('/loans?status=active&limit=100').then(r => setLoans(r.data.data.loans || [])).catch(() => {}),
-      api.get('/profiles/for-select').then(r => {
-        setCreditors(r.data.data.creditors || []);
-        setDebtors(r.data.data.debtors || []);
-      }).catch(() => toast.error('Failed to load creditors/debtors')),
-    ]);
+    try {
+      api.get('/loans?status=active&limit=100').then(r => setLoans(r.data.data.loans || [])).catch(() => {});
+    } catch {}
+    try {
+      const r = await api.get('/profiles/for-select');
+      const c = r.data?.data?.creditors || [];
+      const d = r.data?.data?.debtors || [];
+      setCreditors(c);
+      setDebtors(d);
+      if (c.length === 0 && d.length === 0) {
+        toast('No creditor or debtor profiles found. Create them in the Accounts section first.', { icon: 'ℹ️' });
+      }
+    } catch (err) {
+      console.error('profiles/for-select failed:', err?.response?.status, err?.response?.data || err.message);
+      toast.error(`Failed to load profiles: ${err?.response?.data?.message || err.message}`);
+    }
   };
 
   const openCreate = async () => {
@@ -261,28 +270,39 @@ export default function TransactionsPage() {
           </div>
 
           {isAdmin && (
-            <div className="grid grid-cols-2 gap-3">
-              {config.fromLabel && (
-                <div>
-                  <label className="input-label">{config.fromLabel}</label>
-                  <select className="input-field" value={form.fromAccountId}
-                    onChange={(e) => setForm({ ...form, fromAccountId: e.target.value })}
-                    required={config.from && config.from !== 'both'}>
-                    <option value="">Select...</option>
-                    {getOptions(config.from).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                </div>
+            <div className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                {config.fromLabel && (
+                  <div>
+                    <label className="input-label">{config.fromLabel}</label>
+                    <select className="input-field" value={form.fromAccountId}
+                      onChange={(e) => setForm({ ...form, fromAccountId: e.target.value })}
+                      required={config.from && config.from !== 'both'}>
+                      <option value="">Select...</option>
+                      {getOptions(config.from).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </div>
+                )}
+                {config.toLabel && (
+                  <div>
+                    <label className="input-label">{config.toLabel}</label>
+                    <select className="input-field" value={form.toAccountId}
+                      onChange={(e) => setForm({ ...form, toAccountId: e.target.value })}
+                      required={config.to && config.to !== 'both'}>
+                      <option value="">Select...</option>
+                      {getOptions(config.to).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                    </select>
+                  </div>
               )}
-              {config.toLabel && (
-                <div>
-                  <label className="input-label">{config.toLabel}</label>
-                  <select className="input-field" value={form.toAccountId}
-                    onChange={(e) => setForm({ ...form, toAccountId: e.target.value })}
-                    required={config.to && config.to !== 'both'}>
-                    <option value="">Select...</option>
-                    {getOptions(config.to).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                </div>
+              </div>
+              {(creditors.length === 0 || debtors.length === 0) && (
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2">
+                  {creditors.length === 0 && debtors.length === 0
+                    ? 'No creditor or debtor profiles found.'
+                    : creditors.length === 0 ? 'No creditor profiles found.'
+                    : 'No debtor profiles found.'}
+                  {' '}Go to <strong>Accounts</strong> to create them first.
+                </p>
               )}
             </div>
           )}

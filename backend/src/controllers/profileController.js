@@ -415,7 +415,6 @@ exports.getProfilesForSelect = async (req, res) => {
                 u.first_name || ' ' || u.last_name AS name, u.its_number
          FROM creditor_profiles cp
          JOIN users u ON cp.user_id = u.id
-         WHERE cp.is_active = TRUE
          ORDER BY u.first_name, u.last_name`
       ),
       query(
@@ -423,12 +422,12 @@ exports.getProfilesForSelect = async (req, res) => {
                 u.first_name || ' ' || u.last_name AS name, u.its_number
          FROM debtor_profiles dp
          JOIN users u ON dp.user_id = u.id
-         WHERE dp.is_active = TRUE
          ORDER BY u.first_name, u.last_name`
       ),
     ]);
     res.json({ success: true, data: { creditors: creditorsRes.rows, debtors: debtorsRes.rows } });
   } catch (err) {
+    console.error('[getProfilesForSelect]', err.message);
     res.status(500).json({ success: false, message: err.message });
   }
 };
