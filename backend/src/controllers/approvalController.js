@@ -154,6 +154,58 @@ exports.reviewApproval = async (req, res) => {
       );
     }
 
+    if (approval.reference_type === 'loan') {
+      const loanRes = await query(`SELECT * FROM loans WHERE id = $1`, [approval.reference_id]);
+      const loan = loanRes.rows[0];
+      if (loan) {
+        if (newStatus === 'approved') {
+          await query(
+            `UPDATE loans SET status = 'approved', approved_by = $1, approved_at = NOW(), updated_at = NOW() WHERE id = $2`,
+            [req.user.id, loan.id]
+          );
+          await query(
+            `UPDATE debtor_profiles SET total_borrowed = total_borrowed + $1, outstanding_balance = outstanding_balance + $1 WHERE id = $2`,
+            [loan.principal_amount, loan.debtor_id]
+          );
+          const debtorUser = await query(
+            `SELECT u.id FROM users u JOIN debtor_profiles dp ON u.id = dp.user_id WHERE dp.id = $1`,
+            [loan.debtor_id]
+          );
+          if (debtorUser.rows[0]) {
+            await notify({
+              userId: debtorUser.rows[0].id,
+              type: 'loan_status',
+              title: `Loan Approved — ${loan.loan_number}`,
+              message: `Your loan application ${loan.loan_number} has been approved.`,
+              notifType: 'success', referenceType: 'loan', referenceId: loan.id,
+              emailTemplate: 'loanUpdate',
+              emailData: { loanNumber: loan.loan_number, status: 'approved', amount: loan.principal_amount },
+            });
+          }
+        } else {
+          await query(
+            `UPDATE loans SET status = 'rejected', updated_at = NOW() WHERE id = $1`,
+            [loan.id]
+          );
+          const debtorUser = await query(
+            `SELECT u.id FROM users u JOIN debtor_profiles dp ON u.id = dp.user_id WHERE dp.id = $1`,
+            [loan.debtor_id]
+          );
+          if (debtorUser.rows[0]) {
+            await notify({
+              userId: debtorUser.rows[0].id,
+              type: 'loan_status',
+              title: `Loan Application Rejected — ${loan.loan_number}`,
+              message: `Your loan application ${loan.loan_number} was not approved.${notes ? ` Notes: ${notes}` : ''}`,
+              notifType: 'error', referenceType: 'loan', referenceId: loan.id,
+              emailTemplate: 'loanUpdate',
+              emailData: { loanNumber: loan.loan_number, status: 'rejected', amount: loan.principal_amount, notes },
+            });
+          }
+        }
+      }
+    }
+
     if (approval.reference_type === 'account_deletion' && newStatus === 'approved') {
       await query(`UPDATE users SET is_active = FALSE, updated_at = NOW() WHERE id = $1`, [approval.reference_id]);
     }

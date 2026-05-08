@@ -59,9 +59,15 @@ export default function TransactionsPage() {
   };
 
   const loadFormData = async () => {
-    try {
-      api.get('/loans?status=active&limit=100').then(r => setLoans(r.data.data.loans || [])).catch(() => {});
-    } catch {}
+    Promise.allSettled([
+      api.get('/loans?status=active&limit=100'),
+      api.get('/loans?status=approved&limit=100'),
+    ]).then(([activeRes, approvedRes]) => {
+      setLoans([
+        ...(activeRes.status === 'fulfilled' ? activeRes.value.data.data.loans || [] : []),
+        ...(approvedRes.status === 'fulfilled' ? approvedRes.value.data.data.loans || [] : []),
+      ]);
+    });
     try {
       const r = await api.get('/profiles/for-select');
       const c = r.data?.data?.creditors || [];
