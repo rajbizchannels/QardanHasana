@@ -22,7 +22,7 @@ export default function UsersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [total, setTotal] = useState(0);
   const [showCreate, setShowCreate] = useState(false);
-  const [newUser, setNewUser] = useState({ itsNumber: '', email: '', firstName: '', lastName: '', phone: '', roles: ['member'] });
+  const [newUser, setNewUser] = useState({ itsNumber: '', email: '', firstName: '', lastName: '', phone: '', whatsapp: '', roles: ['member'] });
   const [creating, setCreating] = useState(false);
   const [showDelete, setShowDelete] = useState(null);
   const [deleting, setDeleting] = useState(false);
@@ -54,7 +54,7 @@ export default function UsersPage() {
       await api.post('/users', newUser);
       toast.success('User created successfully');
       setShowCreate(false);
-      setNewUser({ itsNumber: '', email: '', firstName: '', lastName: '', phone: '', roles: ['member'] });
+      setNewUser({ itsNumber: '', email: '', firstName: '', lastName: '', phone: '', whatsapp: '', roles: ['member'] });
       fetchUsers();
     } catch {
       toast.error('Failed to create user');
@@ -169,7 +169,19 @@ export default function UsersPage() {
           </div>
           <div><label className="input-label">ITS Number *</label><input className="input-field" required value={newUser.itsNumber} onChange={(e) => setNewUser({ ...newUser, itsNumber: e.target.value })} placeholder="e.g. 10000010" /></div>
           <div><label className="input-label">Email *</label><input type="email" className="input-field" required value={newUser.email} onChange={(e) => setNewUser({ ...newUser, email: e.target.value })} /></div>
-          <div><label className="input-label">Phone</label><input className="input-field" value={newUser.phone} onChange={(e) => setNewUser({ ...newUser, phone: e.target.value })} /></div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="input-label">Phone</label>
+              <input className="input-field" value={newUser.phone} onChange={(e) => {
+                const p = e.target.value;
+                setNewUser(prev => ({ ...prev, phone: p, whatsapp: prev.whatsapp === prev.phone ? p : prev.whatsapp }));
+              }} />
+            </div>
+            <div>
+              <label className="input-label">WhatsApp Number</label>
+              <input className="input-field" value={newUser.whatsapp} onChange={(e) => setNewUser({ ...newUser, whatsapp: e.target.value })} placeholder="Same as phone if blank" />
+            </div>
+          </div>
           <div>
             <label className="input-label">Roles</label>
             <div className="grid grid-cols-2 gap-2 mt-1">
