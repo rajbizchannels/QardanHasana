@@ -20,7 +20,7 @@ const ACCOUNT_CONFIG = {
   adjustment:        { from: 'both',     to: 'both',      fromLabel: 'From (optional)',   toLabel: 'To (optional)'  },
 };
 
-const EMPTY_FORM = { type: 'loan_repayment', amount: '', description: '', fromAccountId: '', toAccountId: '', loanId: '', bankReference: '', notes: '' };
+const EMPTY_FORM = { type: 'loan_repayment', amount: '', description: '', fromAccountId: '', toAccountId: '', loanId: '', bankReference: '', notes: '', valueDate: '', maturityDate: '' };
 
 export default function TransactionsPage() {
   const { user } = useSelector((s) => s.auth);
@@ -92,6 +92,8 @@ export default function TransactionsPage() {
       loanId: txn.loan_id || '',
       bankReference: txn.bank_reference || '',
       notes: txn.notes || '',
+      valueDate: txn.value_date ? txn.value_date.split('T')[0] : '',
+      maturityDate: txn.maturity_date ? txn.maturity_date.split('T')[0] : '',
     });
     setShowEdit(txn);
     await loadFormData();
@@ -118,6 +120,8 @@ export default function TransactionsPage() {
         loanId: editForm.loanId || null,
         bankReference: editForm.bankReference || null,
         notes: editForm.notes || null,
+        valueDate: editForm.valueDate || null,
+        maturityDate: editForm.maturityDate || null,
       });
       toast.success('Transaction updated');
       setShowEdit(null);
@@ -142,6 +146,8 @@ export default function TransactionsPage() {
         loanId: form.loanId || null,
         bankReference: form.bankReference || null,
         notes: form.notes || null,
+        valueDate: form.valueDate || null,
+        maturityDate: form.maturityDate || null,
       };
       await api.post('/transactions', payload);
       toast.success(isAdmin ? 'Transaction created and posted to ledger' : 'Transaction submitted for approval');
@@ -324,6 +330,18 @@ export default function TransactionsPage() {
               </select>
             </div>
           )}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="input-label">Transaction Date</label>
+              <input type="date" className="input-field" value={form.valueDate} onChange={(e) => setForm({ ...form, valueDate: e.target.value })} />
+            </div>
+            {form.type === 'deposit' && (
+              <div>
+                <label className="input-label">Maturity Date *</label>
+                <input type="date" className="input-field" required value={form.maturityDate} onChange={(e) => setForm({ ...form, maturityDate: e.target.value })} />
+              </div>
+            )}
+          </div>
           <div>
             <label className="input-label">Bank Reference</label>
             <input className="input-field" value={form.bankReference} onChange={(e) => setForm({ ...form, bankReference: e.target.value })} placeholder="UTR / NEFT / IMPS reference" />
@@ -391,6 +409,18 @@ export default function TransactionsPage() {
               </select>
             </div>
           )}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="input-label">Transaction Date</label>
+              <input type="date" className="input-field" value={editForm.valueDate} onChange={(e) => setEditForm({ ...editForm, valueDate: e.target.value })} />
+            </div>
+            {editForm.type === 'deposit' && (
+              <div>
+                <label className="input-label">Maturity Date *</label>
+                <input type="date" className="input-field" value={editForm.maturityDate} onChange={(e) => setEditForm({ ...editForm, maturityDate: e.target.value })} />
+              </div>
+            )}
+          </div>
           <div>
             <label className="input-label">Bank Reference</label>
             <input className="input-field" value={editForm.bankReference} onChange={(e) => setEditForm({ ...editForm, bankReference: e.target.value })} placeholder="UTR / NEFT / IMPS reference" />

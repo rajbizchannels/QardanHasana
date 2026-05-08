@@ -100,7 +100,7 @@ exports.createTransaction = async (req, res) => {
   try {
     const {
       type, amount, description, fromAccountId, toAccountId,
-      loanId, bankReference, notes, valueDate, referenceNumber,
+      loanId, bankReference, notes, valueDate, referenceNumber, maturityDate,
     } = req.body;
 
     const txnNumber = generateTxnNumber();
@@ -113,11 +113,11 @@ exports.createTransaction = async (req, res) => {
     const txnRes = await query(
       `INSERT INTO transactions (transaction_number, type, amount, currency, description,
         from_account_id, to_account_id, loan_id, bank_reference, notes, value_date,
-        reference_number, status, created_by)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14) RETURNING *`,
+        reference_number, maturity_date, status, created_by)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15) RETURNING *`,
       [txnNumber, type, amount, currency, description, fromAccountId || null,
        toAccountId || null, loanId || null, bankReference || null, notes || null,
-       valueDate || null, referenceNumber || null, status, req.user.id]
+       valueDate || null, referenceNumber || null, maturityDate || null, status, req.user.id]
     );
 
     const txn = txnRes.rows[0];
@@ -161,7 +161,7 @@ exports.createTransaction = async (req, res) => {
 exports.updateTransaction = async (req, res) => {
   try {
     const { id } = req.params;
-    const { type, amount, description, fromAccountId, toAccountId, loanId, bankReference, notes, valueDate, referenceNumber } = req.body;
+    const { type, amount, description, fromAccountId, toAccountId, loanId, bankReference, notes, valueDate, referenceNumber, maturityDate } = req.body;
 
     const txnRes = await query(`SELECT * FROM transactions WHERE id = $1 AND deleted_at IS NULL`, [id]);
     if (!txnRes.rows[0]) return res.status(404).json({ success: false, message: 'Transaction not found' });
@@ -183,12 +183,13 @@ exports.updateTransaction = async (req, res) => {
         notes = $8,
         value_date = COALESCE($9, value_date),
         reference_number = $10,
+        maturity_date = $11,
         updated_at = NOW()
-       WHERE id = $11`,
+       WHERE id = $12`,
       [type || null, amount || null, description || null,
        fromAccountId || null, toAccountId || null, loanId || null,
        bankReference || null, notes || null,
-       valueDate || null, referenceNumber || null, id]
+       valueDate || null, referenceNumber || null, maturityDate || null, id]
     );
 
     await audit({ userId: req.user.id, action: 'TRANSACTION_UPDATED', entityType: 'transaction', entityId: id, newValues: { type, amount }, ipAddress: req.ip });
@@ -204,6 +205,7 @@ exports.updateTransaction = async (req, res) => {
     // Re-post to ledger if already approved/completed so entries reflect updated from/to/amount
     if (['approved', 'completed'].includes(updated.rows[0].status)) {
       await query(`DELETE FROM ledger_entries WHERE transaction_id = $1`, [id]);
+      await query(`DELETE FROM creditor_deposits WHERE transaction_id = $1`, [id]);
       await query(`UPDATE transactions SET status = 'approved', updated_at = NOW() WHERE id = $1`, [id]);
       await postToLedger(updated.rows[0], req.user.id);
     }
@@ -335,4 +337,21 @@ async function postToLedger(txn, approvedBy) {
   }
 
   await query(`UPDATE transactions SET status = 'completed', updated_at = NOW() WHERE id = $1`, [txn.id]);
+
+  if (txn.type === 'deposit' && txn.from_account_id) {
+    const cpRes = await query(`SELECT id FROM creditor_profiles WHERE user_id = $1`, [txn.from_account_id]);
+    if (cpRes.rows[0]) {
+      const dupCheck = await query(`SELECT id FROM creditor_deposits WHERE transaction_id = $1`, [txn.id]);
+      if (!dupCheck.rows[0]) {
+        const depositDate = txn.value_date
+          ? new Date(txn.value_date).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0];
+        await query(
+          `INSERT INTO creditor_deposits (creditor_id, amount, deposit_date, maturity_date, notes, created_by, transaction_id)
+           VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+          [cpRes.rows[0].id, txn.amount, depositDate, txn.maturity_date || null, txn.notes || null, approvedBy, txn.id]
+        );
+      }
+    }
+  }
 }
