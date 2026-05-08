@@ -158,6 +158,54 @@ exports.createTransaction = async (req, res) => {
   }
 };
 
+exports.updateTransaction = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { type, amount, description, fromAccountId, toAccountId, loanId, bankReference, notes, valueDate, referenceNumber } = req.body;
+
+    const txnRes = await query(`SELECT * FROM transactions WHERE id = $1 AND deleted_at IS NULL`, [id]);
+    if (!txnRes.rows[0]) return res.status(404).json({ success: false, message: 'Transaction not found' });
+
+    const txn = txnRes.rows[0];
+    if (txn.status !== 'pending') {
+      return res.status(400).json({ success: false, message: 'Only pending transactions can be edited' });
+    }
+
+    await query(
+      `UPDATE transactions SET
+        type = COALESCE($1, type),
+        amount = COALESCE($2, amount),
+        description = COALESCE($3, description),
+        from_account_id = $4,
+        to_account_id = $5,
+        loan_id = $6,
+        bank_reference = $7,
+        notes = $8,
+        value_date = COALESCE($9, value_date),
+        reference_number = $10,
+        updated_at = NOW()
+       WHERE id = $11`,
+      [type || null, amount || null, description || null,
+       fromAccountId || null, toAccountId || null, loanId || null,
+       bankReference || null, notes || null,
+       valueDate || null, referenceNumber || null, id]
+    );
+
+    await audit({ userId: req.user.id, action: 'TRANSACTION_UPDATED', entityType: 'transaction', entityId: id, newValues: { type, amount }, ipAddress: req.ip });
+
+    const updated = await query(
+      `SELECT t.*, fu.first_name || ' ' || fu.last_name as from_name, tu.first_name || ' ' || tu.last_name as to_name
+       FROM transactions t
+       LEFT JOIN users fu ON t.from_account_id = fu.id
+       LEFT JOIN users tu ON t.to_account_id = tu.id
+       WHERE t.id = $1`, [id]
+    );
+    res.json({ success: true, data: updated.rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 exports.approveTransaction = async (req, res) => {
   try {
     const { id } = req.params;

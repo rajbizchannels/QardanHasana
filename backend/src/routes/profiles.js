@@ -4,6 +4,7 @@ const { authenticate, requireRole } = require('../middleware/auth');
 const ctrl = require('../controllers/profileController');
 
 router.get('/', authenticate, requireRole('admin', 'accountant'), ctrl.getProfiles);
+router.get('/for-select', authenticate, requireRole('admin', 'accountant'), ctrl.getProfilesForSelect);
 router.post('/creditor', authenticate, ctrl.createCreditorProfile);
 router.put('/creditor/:id', authenticate, requireRole('admin', 'accountant'), ctrl.updateCreditorProfile);
 router.delete('/creditor/:id', authenticate, requireRole('admin', 'accountant'), ctrl.deleteCreditorProfile);

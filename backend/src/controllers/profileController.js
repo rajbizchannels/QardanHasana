@@ -406,3 +406,29 @@ exports.getAllDeposits = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+exports.getProfilesForSelect = async (req, res) => {
+  try {
+    const [creditorsRes, debtorsRes] = await Promise.all([
+      query(
+        `SELECT cp.id, cp.user_id, cp.creditor_number,
+                u.first_name || ' ' || u.last_name AS name, u.its_number
+         FROM creditor_profiles cp
+         JOIN users u ON cp.user_id = u.id
+         WHERE cp.is_active = TRUE
+         ORDER BY u.first_name, u.last_name`
+      ),
+      query(
+        `SELECT dp.id, dp.user_id, dp.debtor_number,
+                u.first_name || ' ' || u.last_name AS name, u.its_number
+         FROM debtor_profiles dp
+         JOIN users u ON dp.user_id = u.id
+         WHERE dp.is_active = TRUE
+         ORDER BY u.first_name, u.last_name`
+      ),
+    ]);
+    res.json({ success: true, data: { creditors: creditorsRes.rows, debtors: debtorsRes.rows } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};

@@ -34,8 +34,11 @@ export default function TransactionsPage() {
   const [filters, setFilters] = useState({ status: '', type: '', startDate: '', endDate: '' });
   const [showCreate, setShowCreate] = useState(false);
   const [showDelete, setShowDelete] = useState(null);
+  const [showEdit, setShowEdit] = useState(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [editForm, setEditForm] = useState(EMPTY_FORM);
   const [creating, setCreating] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [loans, setLoans] = useState([]);
   const [creditors, setCreditors] = useState([]);
   const [debtors, setDebtors] = useState([]);
@@ -55,22 +58,70 @@ export default function TransactionsPage() {
     finally { setLoading(false); }
   };
 
-  const openCreate = async () => {
-    setShowCreate(true);
+  const loadFormData = async () => {
     try {
-      const [loansRes, creditorsRes, debtorsRes] = await Promise.all([
+      const [loansRes, profilesRes] = await Promise.all([
         api.get('/loans?status=active&limit=100'),
-        api.get('/profiles?type=creditors&limit=100'),
-        api.get('/profiles?type=debtors&limit=100'),
+        api.get('/profiles/for-select'),
       ]);
       setLoans(loansRes.data.data.loans || []);
-      setCreditors(creditorsRes.data.data.creditors || []);
-      setDebtors(debtorsRes.data.data.debtors || []);
-    } catch {}
+      setCreditors(profilesRes.data.data.creditors || []);
+      setDebtors(profilesRes.data.data.debtors || []);
+    } catch {
+      toast.error('Failed to load creditors/debtors');
+    }
+  };
+
+  const openCreate = async () => {
+    setShowCreate(true);
+    await loadFormData();
+  };
+
+  const openEdit = async (txn) => {
+    setEditForm({
+      type: txn.type,
+      amount: txn.amount,
+      description: txn.description || '',
+      fromAccountId: txn.from_account_id || '',
+      toAccountId: txn.to_account_id || '',
+      loanId: txn.loan_id || '',
+      bankReference: txn.bank_reference || '',
+      notes: txn.notes || '',
+    });
+    setShowEdit(txn);
+    await loadFormData();
   };
 
   const handleTypeChange = (type) => {
     setForm(prev => ({ ...prev, type, fromAccountId: '', toAccountId: '' }));
+  };
+
+  const handleEditTypeChange = (type) => {
+    setEditForm(prev => ({ ...prev, type, fromAccountId: '', toAccountId: '' }));
+  };
+
+  const handleEdit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await api.put(`/transactions/${showEdit.id}`, {
+        type: editForm.type,
+        amount: editForm.amount,
+        description: editForm.description,
+        fromAccountId: editForm.fromAccountId || null,
+        toAccountId: editForm.toAccountId || null,
+        loanId: editForm.loanId || null,
+        bankReference: editForm.bankReference || null,
+        notes: editForm.notes || null,
+      });
+      toast.success('Transaction updated');
+      setShowEdit(null);
+      fetchTxns();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update transaction');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCreate = async (e) => {
@@ -173,6 +224,7 @@ export default function TransactionsPage() {
                             <>
                               <button onClick={() => handleApprove(t.id, 'approve')} className="text-xs text-green-700 hover:underline">✓</button>
                               <button onClick={() => handleApprove(t.id, 'reject')} className="text-xs text-red-600 hover:underline">✗</button>
+                              <button onClick={() => openEdit(t)} className="text-xs text-primary-800 hover:underline ml-1">Edit</button>
                             </>
                           )}
                           {t.status !== 'cancelled' && t.deleted_at === null && (
@@ -263,6 +315,72 @@ export default function TransactionsPage() {
             <textarea className="input-field" rows={2} value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} />
           </div>
           {!isAdmin && <div className="bg-yellow-50 border border-yellow-200 rounded p-3"><p className="text-xs text-yellow-800">This transaction will be submitted for admin approval before posting to ledger.</p></div>}
+        </form>
+      </Modal>
+
+      {/* Edit Modal */}
+      <Modal isOpen={!!showEdit} onClose={() => setShowEdit(null)} title={`Edit Transaction — ${showEdit?.transaction_number}`}
+        footer={
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setShowEdit(null)} className="btn-outline">Cancel</button>
+            <button onClick={handleEdit} disabled={saving} className="btn-primary">{saving ? 'Saving...' : 'Save Changes'}</button>
+          </div>
+        }
+      >
+        <form onSubmit={handleEdit} className="space-y-4">
+          <div>
+            <label className="input-label">Transaction Type *</label>
+            <select className="input-field" required value={editForm.type} onChange={(e) => handleEditTypeChange(e.target.value)}>
+              {TXN_TYPES.map(t => <option key={t} value={t}>{typeLabel(t)}</option>)}
+            </select>
+          </div>
+          {(() => { const cfg = ACCOUNT_CONFIG[editForm.type] || ACCOUNT_CONFIG.adjustment; return (
+            <div className="grid grid-cols-2 gap-3">
+              {cfg.fromLabel && (
+                <div>
+                  <label className="input-label">{cfg.fromLabel}</label>
+                  <select className="input-field" value={editForm.fromAccountId} onChange={(e) => setEditForm({ ...editForm, fromAccountId: e.target.value })} required={cfg.from && cfg.from !== 'both'}>
+                    <option value="">Select...</option>
+                    {getOptions(cfg.from).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+              )}
+              {cfg.toLabel && (
+                <div>
+                  <label className="input-label">{cfg.toLabel}</label>
+                  <select className="input-field" value={editForm.toAccountId} onChange={(e) => setEditForm({ ...editForm, toAccountId: e.target.value })} required={cfg.to && cfg.to !== 'both'}>
+                    <option value="">Select...</option>
+                    {getOptions(cfg.to).map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+          ); })()}
+          <div>
+            <label className="input-label">Amount *</label>
+            <input type="number" className="input-field" required min="1" value={editForm.amount} onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })} />
+          </div>
+          <div>
+            <label className="input-label">Description *</label>
+            <input className="input-field" required value={editForm.description} onChange={(e) => setEditForm({ ...editForm, description: e.target.value })} />
+          </div>
+          {['loan_disbursement', 'loan_repayment'].includes(editForm.type) && (
+            <div>
+              <label className="input-label">Related Loan</label>
+              <select className="input-field" value={editForm.loanId} onChange={(e) => setEditForm({ ...editForm, loanId: e.target.value })}>
+                <option value="">Select loan...</option>
+                {loans.map(l => <option key={l.id} value={l.id}>{l.loan_number} — {l.debtor_name} — {fmt(l.outstanding_balance)} outstanding</option>)}
+              </select>
+            </div>
+          )}
+          <div>
+            <label className="input-label">Bank Reference</label>
+            <input className="input-field" value={editForm.bankReference} onChange={(e) => setEditForm({ ...editForm, bankReference: e.target.value })} placeholder="UTR / NEFT / IMPS reference" />
+          </div>
+          <div>
+            <label className="input-label">Notes</label>
+            <textarea className="input-field" rows={2} value={editForm.notes} onChange={(e) => setEditForm({ ...editForm, notes: e.target.value })} />
+          </div>
         </form>
       </Modal>
 
