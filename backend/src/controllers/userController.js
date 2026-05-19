@@ -183,7 +183,11 @@ exports.updateUser = async (req, res) => {
   try {
     const { id } = req.params;
     const isOwnProfile = req.user.id === id;
-    const isAdmin = req.user.roles.includes('admin');
+    const isPrivileged = req.user.roles.some(r => ['admin', 'accountant'].includes(r));
+
+    if (!isOwnProfile && !isPrivileged) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
 
     const currentRes = await query(`SELECT * FROM users WHERE id = $1`, [id]);
     const current = currentRes.rows[0];
@@ -203,7 +207,7 @@ exports.updateUser = async (req, res) => {
       if (itsCheck.rows[0]) return res.status(409).json({ success: false, message: 'ITS number already in use' });
     }
 
-    if (isOwnProfile && !isAdmin) {
+    if (isOwnProfile && !isPrivileged) {
       const changes = {
         itsNumber, firstName, lastName, phone, whatsapp, dateOfBirth, gender,
         addressLine1, addressLine2, city, state, country, postalCode,

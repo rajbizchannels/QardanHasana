@@ -187,6 +187,9 @@ export default function UserProfilePage({ isSelf, isNew }) {
   const isAdmin = hasRole(authUser, 'admin');
   const isAccountant = hasRole(authUser, 'admin', 'accountant');
   const userId = isSelf ? authUser.id : id;
+  const isOwnPage = isSelf || userId === authUser?.id;
+  const canEdit = isOwnPage || isAccountant;
+  const directEdit = isAccountant && (!isOwnPage || isAdmin);
 
   const [user, setUser] = useState(null);
   const [tab, setTab] = useState('personal');
@@ -247,10 +250,10 @@ export default function UserProfilePage({ isSelf, isNew }) {
     setSaving(true);
     try {
       await api.put(`/users/${userId}`, form);
-      toast.success(isAdmin ? 'Profile updated successfully' : 'Profile update submitted for approval');
+      toast.success(directEdit ? 'Profile updated successfully' : 'Profile update submitted for approval');
       fetchUser();
-    } catch {
-      toast.error('Failed to save profile');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save profile');
     } finally {
       setSaving(false);
     }
@@ -281,8 +284,6 @@ export default function UserProfilePage({ isSelf, isNew }) {
 
   if (loading) return <div className="flex justify-center py-20"><LoadingSpinner size="lg" /></div>;
 
-  const canEdit = isSelf || isAdmin;
-
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="page-header">
@@ -299,16 +300,27 @@ export default function UserProfilePage({ isSelf, isNew }) {
           )}
           {canEdit && (
             <button onClick={handleSave} disabled={saving} className="btn-primary">
-              {saving ? 'Saving...' : isAdmin ? 'Save Changes' : 'Submit for Approval'}
+              {saving ? 'Saving...' : directEdit ? 'Save Changes' : 'Submit for Approval'}
             </button>
           )}
         </div>
       </div>
 
-      {/* Pending changes notice */}
+      {/* Edit-mode banners */}
+      {canEdit && directEdit && (
+        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 flex items-center gap-2">
+          <span className="text-blue-700 text-sm font-medium">Admin edit — changes apply immediately.</span>
+        </div>
+      )}
+      {canEdit && !directEdit && !user?.profile_changes_pending && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3">
+          <p className="text-amber-800 text-sm font-medium">Your changes will be submitted for admin approval before taking effect.</p>
+        </div>
+      )}
       {user?.profile_changes_pending && (
-        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-          <p className="text-yellow-800 text-sm font-medium">Profile changes are pending admin approval</p>
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3">
+          <p className="text-yellow-800 text-sm font-medium">Profile changes are pending admin approval.</p>
+          <p className="text-yellow-700 text-xs mt-0.5">You can submit a new update — it will replace the previous pending request.</p>
         </div>
       )}
 
